@@ -1,0 +1,7 @@
+# ==========================================
+# PROTEÇÃO DE DADOS - MICRODADOS INEP / SEDAP+
+# ==========================================
+
+
+# Adicione esta linha ao final do seu arquivo .gitignore
+data/raw/INEP/
