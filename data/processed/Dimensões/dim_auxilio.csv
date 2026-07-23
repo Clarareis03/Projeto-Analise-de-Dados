@@ -1,0 +1,7 @@
+codigo_auxilio,descricao,tipo_auxilio
+1,Auxílio Alimentação / RU,IN_APOIO_ALIMENTACAO
+2,Auxílio Moradia,IN_APOIO_MORADIA
+3,Auxílio Transporte,IN_APOIO_TRANSPORTE
+4,Auxílio Material Didático,IN_APOIO_MATERIAL_DIDATICO
+5,Bolsa Permanência,IN_APOIO_BOLSA_PERMANENCIA
+6,Bolsa Trabalho,IN_APOIO_BOLSA_TRABALHO
