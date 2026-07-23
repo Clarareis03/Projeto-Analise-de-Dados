@@ -22,4 +22,10 @@ dados_auxilio = {
 
 df_auxilio = pd.DataFrame(dados_auxilio)
 
+# --- MUDANDO O NOME DA COLUNA AQUI ---
+df_auxilio = df_auxilio.rename(columns={
+    'codigo_auxilio': 'id_auxilio',
+    'descricao': 'auxilio'
+})
+
 df_auxilio.to_csv('data/processed/Dimensões/dim_auxilio.csv', index=False, encoding='utf-8')
