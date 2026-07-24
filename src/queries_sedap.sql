@@ -1,1 +1,0 @@
---- Aqui vai o codigo SQL usado para gerar a tabela sedap ---
