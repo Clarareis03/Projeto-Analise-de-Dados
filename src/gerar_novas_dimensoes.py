@@ -1,4 +1,4 @@
-"""
+""" # foi gerado pelo Claude para produção
 build_dimensions.py
 --------------------
 Gera os arquivos de dimensão processados (data/processed/) a partir dos
