@@ -1,8 +1,5 @@
 import pandas as pd
 
-# Mapeamento curso -> sigla do centro acadêmico, validado contra a
-# estrutura oficial da UFPB (Estatuto/Regimento, relatório CIA em Números
-# 2024 e páginas oficiais dos centros — ci.ufpb.br, ccsa.ufpb.br etc.)
 MAPA_CENTRO = {
     13397: "CCSA", 13418: "CE", 13398: "CCJ", 13424: "CCM",
     107548: "CCHLA", 13395: "CCSA", 107549: "CCHLA", 13413: "CCHLA",
@@ -16,7 +13,7 @@ MAPA_CENTRO = {
     13425: "CCS", 13423: "CCS", 1110230: "CCHLA", 1125641: "CCHLA",
     116830: "CCHLA", 113604: "CT", 1503759: "CI", 1363988: "CCSA",
     113617: "CT", 1127165: "CTDR", 100220: "CCTA", 13428: "CT",
-    1189062: "Cbiotec", 122934: "CT", 1123330: "CCS", 13404: "CCEN",
+    1189062: "CBIOTEC", 122934: "CT", 1123330: "CCS", 13404: "CCEN",
     13459: "CCHLA", 116826: "CE", 313399: "CCEN", 1399139: "CCS",
     122918: "CCS", 97039: "CCTA", 1268221: "CCTA", 13406: "CCEN",
     1162838: "CE", 19563: "CT", 1268257: "CCTA", 13431: "CT",
@@ -34,13 +31,20 @@ MAPA_CENTRO = {
 def criar_curso_centro(dim_curso: pd.DataFrame, dim_centro: pd.DataFrame) -> pd.DataFrame:
     sigla_to_id = dict(zip(dim_centro["CENTRO"], dim_centro["ID_CENTRO"]))
 
-    faltando = set(dim_curso["ID_CURSO"]) - set(MAPA_CENTRO.keys())
+    # 1. Verifica cursos mapeados usando CO_CURSO (código MEC)
+    col_busca = "CO_CURSO" if "CO_CURSO" in dim_curso.columns else "ID_CURSO"
+    
+    faltando = set(dim_curso[col_busca]) - set(MAPA_CENTRO.keys())
     if faltando:
         raise ValueError(f"Cursos sem mapeamento de centro: {sorted(faltando)}")
 
-    curso_centro = dim_curso[["ID_CURSO", "CURSO"]].copy()
+    # 2. Mantém CO_CURSO e ID_CURSO na tabela resultante
+    colunas_preservar = [col for col in ["ID_CURSO", "CO_CURSO", "CURSO"] if col in dim_curso.columns]
+    curso_centro = dim_curso[colunas_preservar].copy()
+
+    # 3. Mapeia a partir de CO_CURSO para a sigla e depois para o ID_CENTRO
     curso_centro["ID_CENTRO"] = (
-        dim_curso["ID_CURSO"].map(MAPA_CENTRO).map(sigla_to_id).astype("Int64")
+        dim_curso[col_busca].map(MAPA_CENTRO).map(sigla_to_id).astype("Int64")
     )
 
     return curso_centro
