@@ -73,6 +73,11 @@ def criar_fato_assistencia(
     # -------------------------------------------------
     # 5. Recebe auxílio?
     # -------------------------------------------------
+    # ATENÇÃO: aqui RECEBE_AUXILIO é definido apenas por IN_APOIO_SOCIAL.
+    # Na versão anterior (notebook), esse indicador era um OR entre TODOS
+    # os auxílios específicos (colunas_auxilio). Se IN_APOIO_SOCIAL não for
+    # o agregador oficial de todos os auxílios, confirme se não é o caso de
+    # usar: fato[colunas_auxilio + ["IN_APOIO_SOCIAL"]].any(axis=1)
     fato["RECEBE_AUXILIO"] = (
         fato["IN_APOIO_SOCIAL"]
         .fillna(0)
@@ -95,13 +100,35 @@ def criar_fato_assistencia(
     )
 
     # -------------------------------------------------
-    # 8. Acrescentar Centro
+    # 8. Acrescentar Centro (chave normalizada + merge único)
     # -------------------------------------------------
-    fato = fato.merge(
-        curso_centro[["ID_CURSO", "ID_CENTRO"]],
-        on="ID_CURSO",
-        how="left"
+    # BUG CORRIGIDO: antes havia DOIS merges com curso_centro. Como o
+    # primeiro já criava a coluna ID_CENTRO, o segundo merge duplicava
+    # a chave e o pandas renomeava para ID_CENTRO_x / ID_CENTRO_y — a
+    # coluna "ID_CENTRO" simplesmente deixava de existir no resultado
+    # final (daí o erro ao referenciá-la depois). Mantido só um merge.
+    fato["ID_CURSO"] = fato["ID_CURSO"].astype(int)
+
+    curso_centro_dedup = (
+        curso_centro[["ID_CURSO", "ID_CENTRO"]]
+        .assign(ID_CURSO=lambda df: df["ID_CURSO"].astype(int))
+        .drop_duplicates(subset="ID_CURSO")
     )
+
+    fato = fato.merge(
+        curso_centro_dedup,
+        on="ID_CURSO",
+        how="left",
+        validate="m:1"
+    )
+
+    # Validação: todo curso do Campus I precisa ter Centro mapeado.
+    # Se isso disparar, há curso na fato que não está em dim_curso_centro.
+    sem_centro = fato.loc[fato["ID_CENTRO"].isna(), "ID_CURSO"].unique()
+    if len(sem_centro) > 0:
+        raise ValueError(
+            f"Cursos sem ID_CENTRO mapeado em dim_curso_centro: {sorted(sem_centro)}"
+        )
 
     # -------------------------------------------------
     # 9. Organizar colunas
@@ -127,17 +154,5 @@ def criar_fato_assistencia(
             "TOTAL_IDPNA"
         ]
     ]
-    # -------------------------------------------------
-    # 8. Acrescentar Centro (Garantindo o mesmo tipo para a chave)
-    # -------------------------------------------------
-    fato["ID_CURSO"] = fato["ID_CURSO"].astype(int)
-    curso_centro_copy = curso_centro.copy()
-    curso_centro_copy["ID_CURSO"] = curso_centro_copy["ID_CURSO"].astype(int)
-
-    fato = fato.merge(
-        curso_centro_copy[["ID_CURSO", "ID_CENTRO"]],
-        on="ID_CURSO",
-        how="left"
-    )
 
     return fato
