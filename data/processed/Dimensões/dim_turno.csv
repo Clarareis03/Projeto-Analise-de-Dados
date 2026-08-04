@@ -1,6 +1,6 @@
-﻿ID_TURNO,TOTAL_ALUNOS,DESCRICAO
-0,0,Não informado
-1,4460,Matutino
-2,3313,Vespertino
-3,12663,Noturno
-4,18479,Integral
+﻿ID_TURNO;CD_TURNO;DESCRICAO
+0;NI;Não informado
+1;MAT;Matutino
+2;VESP;Vespertino
+3;NOT;Noturno
+4;INT;Integral

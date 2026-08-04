@@ -1,7 +1,7 @@
-﻿ID_RACA,TOTAL_ALUNOS,DESCRICAO
-0,3824,Não declarada
-1,13113,Branca
-2,3011,Preta
-3,19256,Parda
-4,384,Amarela
-5,561,Indígena
+﻿ID_RACA;DESCRICAO
+0;Não informado
+1;Branca
+2;Preta
+3;Parda
+4;Amarela
+5;Indígena

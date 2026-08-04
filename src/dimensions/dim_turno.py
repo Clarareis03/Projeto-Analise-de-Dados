@@ -5,31 +5,21 @@ Dimensão Turno
 import pandas as pd
 
 
-def criar_dim_turno(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Cria a dimensão Turno, adicionando o registro
-    'Não informado' para cursos EaD ou registros sem turno.
-    """
+def criar_dim_turno() -> pd.DataFrame:
+    """Cria a dimensão estática de Turno padronizada pelo INEP (incluindo 0 para EaD/Não informado)."""
 
-    dim_turno = df.copy()
+    dados_turno = {
+        "ID_TURNO": [0, 1, 2, 3, 4],
+        "CD_TURNO": ["NI", "MAT", "VESP", "NOT", "INT"],
+        "DESCRICAO": [
+            "Não informado",
+            "Matutino",
+            "Vespertino",
+            "Noturno",
+            "Integral",
+        ],
+    }
 
-    # Registro adicional
-    novo = pd.DataFrame({
-        "ID_TURNO": [0],
-        "TOTAL_ALUNOS": [0],
-        "DESCRICAO": ["Não informado"]
-    })
-
-    dim_turno = pd.concat(
-        [novo, dim_turno],
-        ignore_index=True
-    )
-
-    dim_turno = (
-        dim_turno
-        .drop_duplicates(subset="ID_TURNO")
-        .sort_values("ID_TURNO")
-        .reset_index(drop=True)
-    )
+    dim_turno = pd.DataFrame(dados_turno)
 
     return dim_turno

@@ -5,3 +5,8 @@
 
 # Adicione esta linha ao final do seu arquivo .gitignore
 data/raw/INEP/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
