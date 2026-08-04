@@ -1,158 +1,124 @@
 """
-Tabela Fato - Assistência Estudantil
-
-Constrói a tabela fato utilizada no modelo estrela,
-a partir da extração agregada do SEDAP+.
+Tabela Fato Assistência Estudantil
 """
 
+from pathlib import Path
 import pandas as pd
 
 
 def criar_fato_assistencia(
-    fato: pd.DataFrame,
-    curso_centro: pd.DataFrame
+    path_raw_sedap: Path,
+    dim_curso: pd.DataFrame,
+    dim_sexo: pd.DataFrame = None,
+    dim_raca: pd.DataFrame = None,
+    dim_turno: pd.DataFrame = None,
 ) -> pd.DataFrame:
-    """
-    Constrói a tabela fato da assistência estudantil.
-    """
+    """Cria a Fato Assistência vinculada às Dimensões e filtrada estritamente para o Campus I."""
+    # 1. Carrega dados brutos do SEDAP
+    df_sedap = pd.read_csv(
+        path_raw_sedap, sep=None, engine="python", encoding="utf-8-sig"
+    )
+    df_sedap.columns = df_sedap.columns.str.replace("\ufeff", "").str.strip()
 
-    # -------------------------------------------------
-    # 1. Filtrar apenas cursos do Campus I
-    # -------------------------------------------------
-    cursos_fora = [
-        13403, 13454, 13455, 13457, 80589, 97767,
-        98976, 98980, 98982, 98984, 99045,
-        107348, 107352, 107356, 107360,
-        109626, 113709, 397767, 1161324,
-        1167933, 1440696, 5000897,
-        5000898, 113699, 1110415,
-        113701
-    ]
+    # 2. Tratamento para ligação com dim_curso (prioriza NO_CURSO/DS_CURSO se CO_CURSO for incompatível)
+    dim_curso_clean = dim_curso.copy()
 
-    fato = fato[
-        ~fato["CO_CURSO"].isin(cursos_fora)
-    ].copy()
-
-    # -------------------------------------------------
-    # 2. Renomear chaves (CO_CURSO vira ID_CURSO)
-    # -------------------------------------------------
-    fato = fato.rename(columns={
-        "CO_CURSO": "ID_CURSO",
-        "TP_SEXO": "ID_SEXO",
-        "TP_COR_RACA": "ID_RACA",
-        "TP_TURNO": "ID_TURNO"
-    })
-
-    # -------------------------------------------------
-    # 3. Turno não informado
-    # -------------------------------------------------
-    fato["ID_TURNO"] = (
-        fato["ID_TURNO"]
-        .fillna(0)
-        .astype(int)
+    # Tenta relacionar pelo Nome do Curso
+    col_nome_sedap = next(
+        (c for c in ["NO_CURSO", "DS_CURSO", "NOME_CURSO"] if c in df_sedap.columns),
+        None,
+    )
+    col_nome_dim = next(
+        (c for c in ["NO_CURSO", "DS_CURSO", "NOME_CURSO"] if c in dim_curso_clean.columns),
+        None,
     )
 
-    # -------------------------------------------------
-    # 4. Auxílios específicos
-    # -------------------------------------------------
-    colunas_auxilio = [
-        "IN_APOIO_ALIMENTACAO",
-        "IN_APOIO_MORADIA",
-        "IN_APOIO_TRANSPORTE",
-        "IN_APOIO_MATERIAL_DIDATICO",
-        "IN_APOIO_BOLSA_PERMANENCIA",
-        "IN_APOIO_BOLSA_TRABALHO"
-    ]
-
-    fato[colunas_auxilio] = (
-        fato[colunas_auxilio]
-        .fillna(0)
-        .astype(int)
-    )
-
-    # -------------------------------------------------
-    # 5. Recebe auxílio?
-    # -------------------------------------------------
-    # ATENÇÃO: aqui RECEBE_AUXILIO é definido apenas por IN_APOIO_SOCIAL.
-    # Na versão anterior (notebook), esse indicador era um OR entre TODOS
-    # os auxílios específicos (colunas_auxilio). Se IN_APOIO_SOCIAL não for
-    # o agregador oficial de todos os auxílios, confirme se não é o caso de
-    # usar: fato[colunas_auxilio + ["IN_APOIO_SOCIAL"]].any(axis=1)
-    fato["RECEBE_AUXILIO"] = (
-        fato["IN_APOIO_SOCIAL"]
-        .fillna(0)
-        .astype(int)
-    )
-
-    # -------------------------------------------------
-    # 6. Indicador de Demanda Potencial Não Atendida
-    # -------------------------------------------------
-    fato["IDPNA"] = (
-        (fato["IN_ACAO_AFIRMATIVA"] == 1) &
-        (fato["RECEBE_AUXILIO"] == 0)
-    ).astype(int)
-
-    # -------------------------------------------------
-    # 7. Quantidade de estudantes classificados
-    # -------------------------------------------------
-    fato["TOTAL_IDPNA"] = (
-        fato["TOTAL_ALUNOS"] * fato["IDPNA"]
-    )
-
-    # -------------------------------------------------
-    # 8. Acrescentar Centro (chave normalizada + merge único)
-    # -------------------------------------------------
-    # BUG CORRIGIDO: antes havia DOIS merges com curso_centro. Como o
-    # primeiro já criava a coluna ID_CENTRO, o segundo merge duplicava
-    # a chave e o pandas renomeava para ID_CENTRO_x / ID_CENTRO_y — a
-    # coluna "ID_CENTRO" simplesmente deixava de existir no resultado
-    # final (daí o erro ao referenciá-la depois). Mantido só um merge.
-    fato["ID_CURSO"] = fato["ID_CURSO"].astype(int)
-
-    curso_centro_dedup = (
-        curso_centro[["ID_CURSO", "ID_CENTRO"]]
-        .assign(ID_CURSO=lambda df: df["ID_CURSO"].astype(int))
-        .drop_duplicates(subset="ID_CURSO")
-    )
-
-    fato = fato.merge(
-        curso_centro_dedup,
-        on="ID_CURSO",
-        how="left",
-        validate="m:1"
-    )
-
-    # Validação: todo curso do Campus I precisa ter Centro mapeado.
-    # Se isso disparar, há curso na fato que não está em dim_curso_centro.
-    sem_centro = fato.loc[fato["ID_CENTRO"].isna(), "ID_CURSO"].unique()
-    if len(sem_centro) > 0:
-        raise ValueError(
-            f"Cursos sem ID_CENTRO mapeado em dim_curso_centro: {sorted(sem_centro)}"
+    if col_nome_sedap and col_nome_dim:
+        # Padroniza texto (maiúsculo sem espaços extras)
+        df_sedap["NOME_CURSO_NORM"] = (
+            df_sedap[col_nome_sedap].astype(str).str.strip().str.upper()
+        )
+        dim_curso_clean["NOME_CURSO_NORM"] = (
+            dim_curso_clean[col_nome_dim].astype(str).str.strip().str.upper()
         )
 
-    # -------------------------------------------------
-    # 9. Organizar colunas
-    # -------------------------------------------------
-    fato = fato[
-        [
-            "ID_CURSO",
-            "ID_CENTRO",
-            "ID_SEXO",
-            "ID_RACA",
-            "ID_TURNO",
+        # Merge para obter a FK verdadeira da dim_curso (CO_CURSO do INEP)
+        df_filtered = pd.merge(
+            df_sedap,
+            dim_curso_clean[["NOME_CURSO_NORM", "CO_CURSO"]].drop_duplicates(),
+            on="NOME_CURSO_NORM",
+            how="inner",
+            suffixes=("_SEDAP", ""),
+        )
+    else:
+        # Se não houver nome de curso no SEDAP, filtra apenas pelos CO_CURSO conhecidos
+        df_sedap["CO_CURSO_STR"] = (
+            df_sedap["CO_CURSO"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+        )
+        dim_curso_clean["CO_CURSO_STR"] = (
+            dim_curso_clean["CO_CURSO"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+        )
+
+        df_filtered = pd.merge(
+            df_sedap,
+            dim_curso_clean[["CO_CURSO_STR"]].drop_duplicates(),
+            left_on="CO_CURSO_STR",
+            right_on="CO_CURSO_STR",
+            how="inner",
+        )
+
+    # 3. Identifica e despivota (Melt) as colunas de auxílio
+    cols_apoio = [col for col in df_filtered.columns if col.startswith("IN_APOIO_")]
+
+    id_vars = [
+        col
+        for col in [
+            "CO_CURSO",
+            "TP_SEXO",
+            "TP_COR_RACA",
+            "TP_TURNO",
             "IN_ACAO_AFIRMATIVA",
-            "IN_APOIO_SOCIAL",
-            "IN_APOIO_ALIMENTACAO",
-            "IN_APOIO_MORADIA",
-            "IN_APOIO_TRANSPORTE",
-            "IN_APOIO_MATERIAL_DIDATICO",
-            "IN_APOIO_BOLSA_PERMANENCIA",
-            "IN_APOIO_BOLSA_TRABALHO",
             "TOTAL_ALUNOS",
-            "RECEBE_AUXILIO",
-            "IDPNA",
-            "TOTAL_IDPNA"
         ]
+        if col in df_filtered.columns
     ]
 
-    return fato
+    fato_melt = df_filtered.melt(
+        id_vars=id_vars,
+        value_vars=cols_apoio,
+        var_name="DS_AUXILIO",
+        value_name="IN_RECEBEU",
+    )
+
+    # 4. Filtra apenas concessões ativas (= 1)
+    fato_melt["IN_RECEBEU_NUM"] = pd.to_numeric(
+        fato_melt["IN_RECEBEU"], errors="coerce"
+    )
+    fato = fato_melt[fato_melt["IN_RECEBEU_NUM"] == 1].copy()
+
+    # 5. Mapeamento das Chaves Estrangeiras (FKs)
+    auxilio_map = {
+        nome: idx + 1
+        for idx, nome in enumerate(sorted(fato["DS_AUXILIO"].unique()))
+    }
+    fato["ID_AUXILIO"] = fato["DS_AUXILIO"].map(auxilio_map)
+
+    fato["ID_SEXO"] = fato["TP_SEXO"]
+    fato["ID_RACA"] = fato["TP_COR_RACA"]
+    fato["ID_TURNO"] = fato["TP_TURNO"]
+
+    # 6. Métrica Quantitativa
+    fato["QT_BENEFICIARIOS"] = fato.get("TOTAL_ALUNOS", 1)
+
+    cols_final = [
+        "CO_CURSO",
+        "ID_SEXO",
+        "ID_RACA",
+        "ID_TURNO",
+        "IN_ACAO_AFIRMATIVA",
+        "ID_AUXILIO",
+        "QT_BENEFICIARIOS",
+    ]
+
+    cols_existentes = [c for c in cols_final if c in fato.columns]
+    return fato[cols_existentes].reset_index(drop=True)
