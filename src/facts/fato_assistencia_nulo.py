@@ -1,27 +1,36 @@
 """
-Tabela Fato - Assistência Estudantil
+Tabela Fato - Assistência Estudantil (versão NULO)
 
-Constrói a tabela fato utilizada no modelo estrela, a partir da extração
-agregada do SEDAP+ (schema 2023).
+Mesma construção de `fato_assistencia.py`, mas as colunas de auxílio
+específico (IN_APOIO_ALIMENTACAO, IN_APOIO_MORADIA etc.) NÃO são
+preenchidas com 0 — ficam como NaN quando IN_APOIO_SOCIAL = 0.
 
-Diferenças em relação à versão anterior (que usava dados de 2024):
-- Filtro do Campus I não usa mais lista manual `cursos_fora`. Agora é um
-  whitelist (semi-join) contra `dim_curso_campus1` — a mesma lista de 94
-  cursos já validada via INNER JOIN entre INEP e SEDAP+ na dimensão Curso.
-  Isso remove a manutenção manual da lista e garante que fato e dimensão
-  Curso nunca fiquem dessincronizadas.
-- Chave de curso mantida como `CO_CURSO` em toda a fato (não renomeada
-  para `ID_CURSO`), para bater com a convenção usada em
-  `dim_curso_campus1.py` e `dim_curso_centro.py`.
-- IDPNA agora usa `IN_RESERVA_VAGAS` diretamente (disponível na extração
-  2023 do SEDAP+), em vez do substituto `IN_ACAO_AFIRMATIVA` usado
-  temporariamente enquanto a extração 2024 vinha com esse campo vazio.
+Comparar com a versão que preenche 0 (`fato_assistencia.py`) antes de
+decidir qual vai pro modelo final. Ver discussão no notebook/relatório
+sobre o tratamento desses nulos (são "não se aplica", não "não
+respondido" — mas isso não significa que preencher com 0 seja
+obrigatoriamente a melhor escolha de representação pro seu caso de uso).
+
+Efeitos práticos de manter NaN aqui, pra ter em mente na comparação:
+- As colunas de auxílio específico deixam de ser `int` e viram `float`
+  (pandas não tem NaN em coluna inteira nativa, só em float ou no tipo
+  nullable `Int64`). Isso pode exigir ajuste em quem for consumir esses
+  dados a jusante (SQL/BI, groupby, etc.).
+- `SUM()` continua funcionando igual (SQL ignora NULL em soma).
+- `AVG()`/proporção calculada direto na coluna muda de significado: o
+  denominador passa a ser só as linhas não-nulas (quem tem
+  IN_APOIO_SOCIAL=1), não a população toda.
+- No Power BI/Metabase, a coluna aparece com uma categoria "(Blank)" ao
+  lado de 0/1 em tabelas e filtros.
+- RECEBE_AUXILIO e IDPNA não mudam nada — os dois já são calculados a
+  partir de IN_APOIO_SOCIAL/IN_RESERVA_VAGAS, não das colunas de
+  auxílio específico.
 """
 
 import pandas as pd
 
 
-def criar_fato_assistencia(
+def criar_fato_assistencia_nulo(
     fato_raw: pd.DataFrame,
     dim_curso_campus1: pd.DataFrame,
     dim_curso_centro: pd.DataFrame,
@@ -73,8 +82,8 @@ def criar_fato_assistencia(
     # -------------------------------------------------
     # 4. Auxílios específicos
     # -------------------------------------------------
-    # Nulo aqui = "não se aplica" (confirmado: só vem preenchido quando
-    # IN_APOIO_SOCIAL=1). Ver nota metodológica no notebook.
+    # DIFERENÇA em relação a fato_assistencia.py: aqui NÃO preenchemos
+    # com 0 — o nulo é preservado como está na extração bruta.
     colunas_auxilio = [
         "IN_APOIO_ALIMENTACAO",
         "IN_APOIO_MORADIA",
@@ -83,12 +92,7 @@ def criar_fato_assistencia(
         "IN_APOIO_BOLSA_PERMANENCIA",
         "IN_APOIO_BOLSA_TRABALHO",
     ]
-
-    fato[colunas_auxilio] = (
-        fato[colunas_auxilio]
-        .fillna(0)
-        .astype(int)
-    )
+    # (nenhum tratamento aplicado — mantido só pra documentar quais são)
 
     # -------------------------------------------------
     # 5. Recebe auxílio?
