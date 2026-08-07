@@ -33,6 +33,8 @@ PATH_DIM_CENTRO = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_centro.c
 PATH_DIM_RACA = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_raca.csv"
 PATH_DIM_SEXO = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_sexo.csv"
 PATH_DIM_TURNO = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_turno.csv"
+PATH_DIM_GRAU = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_grau.csv"
+PATH_DIM_MODALIDADE = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_modalidade.csv"
 
 
 @st.cache_data
@@ -43,30 +45,70 @@ def load_data():
 
     df_fato = pd.read_csv(PATH_FATO, sep=";")
 
+    # Cruzamento com Tabela Dimensão Curso
     if PATH_DIM_CURSO.exists():
         df_c = pd.read_csv(PATH_DIM_CURSO, sep=";")
-        df_fato = df_fato.merge(df_c[["CO_CURSO", "NO_CURSO"]], on="CO_CURSO", how="left").rename(
-            columns={"NO_CURSO": "CURSO"}
-        )
+        if "CO_CURSO" in df_fato.columns and "CO_CURSO" in df_c.columns:
+            df_fato = df_fato.merge(df_c[["CO_CURSO", "NO_CURSO"]], on="CO_CURSO", how="left").rename(
+                columns={"NO_CURSO": "CURSO"}
+            )
 
+    # Cruzamento com Tabela Dimensão Centro
     if PATH_DIM_CENTRO.exists():
         df_cent = pd.read_csv(PATH_DIM_CENTRO, sep=";")
-        df_fato = df_fato.merge(df_cent, on="ID_CENTRO", how="left")
+        common_cent = list(set(df_fato.columns).intersection(set(df_cent.columns)))
+        if common_cent:
+            df_fato = df_fato.merge(df_cent, on=common_cent, how="left")
 
+    # Cruzamento com Tabela Dimensão Raça
     if PATH_DIM_RACA.exists():
-        df_r = pd.read_csv(PATH_DIM_RACA, sep=";").rename(columns={"DESCRICAO": "RACA_DESCRICAO"})
-        df_fato = df_fato.merge(df_r[["ID_RACA", "RACA_DESCRICAO"]], on="ID_RACA", how="left")
+        df_r = pd.read_csv(PATH_DIM_RACA, sep=";")
+        if "DESCRICAO" in df_r.columns:
+            df_r = df_r.rename(columns={"DESCRICAO": "RACA_DESCRICAO"})
+        common_raca = list(set(df_fato.columns).intersection(set(df_r.columns)))
+        if common_raca:
+            df_fato = df_fato.merge(df_r, on=common_raca, how="left")
 
+    # Cruzamento com Tabela Dimensão Sexo
     if PATH_DIM_SEXO.exists():
-        df_s = pd.read_csv(PATH_DIM_SEXO, sep=";").rename(columns={"DESCRICAO": "SEXO_DESCRICAO"})
-        df_fato = df_fato.merge(df_s[["ID_SEXO", "SEXO_DESCRICAO"]], on="ID_SEXO", how="left")
+        df_s = pd.read_csv(PATH_DIM_SEXO, sep=";")
+        if "DESCRICAO" in df_s.columns:
+            df_s = df_s.rename(columns={"DESCRICAO": "SEXO_DESCRICAO"})
+        common_sexo = list(set(df_fato.columns).intersection(set(df_s.columns)))
+        if common_sexo:
+            df_fato = df_fato.merge(df_s, on=common_sexo, how="left")
 
+    # Cruzamento com Tabela Dimensão Turno
     if PATH_DIM_TURNO.exists():
-        df_t = pd.read_csv(PATH_DIM_TURNO, sep=";").rename(columns={"DESCRICAO": "TURNO_DESCRICAO"})
-        df_fato = df_fato.merge(df_t[["ID_TURNO", "TURNO_DESCRICAO"]], on="ID_TURNO", how="left")
+        df_t = pd.read_csv(PATH_DIM_TURNO, sep=";")
+        if "DESCRICAO" in df_t.columns:
+            df_t = df_t.rename(columns={"DESCRICAO": "TURNO_DESCRICAO"})
+        common_turno = list(set(df_fato.columns).intersection(set(df_t.columns)))
+        if common_turno:
+            df_fato = df_fato.merge(df_t, on=common_turno, how="left")
 
-    mapa_turno = {"Matutino": "Diurno", "Vespertino": "Diurno", "Integral": "Diurno", "Noturno": "Noturno"}
-    df_fato["GRUPO_TURNO"] = df_fato["TURNO_DESCRICAO"].map(mapa_turno).fillna("Não informado")
+    # Cruzamento com Tabela Dimensão Grau
+    if PATH_DIM_GRAU.exists():
+        df_g = pd.read_csv(PATH_DIM_GRAU, sep=";")
+        if "DESCRICAO" in df_g.columns:
+            df_g = df_g.rename(columns={"DESCRICAO": "GRAU_DESCRICAO"})
+        common_grau = list(set(df_fato.columns).intersection(set(df_g.columns)))
+        if common_grau:
+            df_fato = df_fato.merge(df_g, on=common_grau, how="left")
+
+    # Cruzamento com Tabela Dimensão Modalidade
+    if PATH_DIM_MODALIDADE.exists():
+        df_m = pd.read_csv(PATH_DIM_MODALIDADE, sep=";")
+        if "DESCRICAO" in df_m.columns:
+            df_m = df_m.rename(columns={"DESCRICAO": "MODALIDADE_DESCRICAO"})
+        common_mod = list(set(df_fato.columns).intersection(set(df_m.columns)))
+        if common_mod:
+            df_fato = df_fato.merge(df_m, on=common_mod, how="left")
+
+    # Agrupamento de turnos
+    if "TURNO_DESCRICAO" in df_fato.columns:
+        mapa_turno = {"Matutino": "Diurno", "Vespertino": "Diurno", "Integral": "Diurno", "Noturno": "Noturno"}
+        df_fato["GRUPO_TURNO"] = df_fato["TURNO_DESCRICAO"].map(mapa_turno).fillna("Não informado")
 
     return df_fato
 
@@ -74,7 +116,7 @@ def load_data():
 df_raw = load_data()
 
 # -----------------------------------------------------------------------------
-# 3. BARRA LATERAL (LOGO UFPB E FILTROS)
+# 3. BARRA LATERAL (FILTROS DE DIMENSÃO)
 # -----------------------------------------------------------------------------
 with st.sidebar:
     logo_path = ASSETS_DIR / "logo_ufpb.png"
@@ -85,23 +127,52 @@ with st.sidebar:
     st.markdown("<p style='font-size: 0.8rem; color: #64748b; margin-bottom: 12px;'>Assistência Estudantil</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    centros = ["Todos"] + sorted(list(df_raw["CENTRO"].dropna().unique()))
-    centro_sel = st.selectbox("Centro de Ensino", centros)
-
-    turnos = ["Todos"] + sorted(list(df_raw["GRUPO_TURNO"].unique()))
-    turno_sel = st.selectbox("Turno do Curso", turnos)
-
     df_filtered = df_raw.copy()
-    if centro_sel != "Todos":
-        df_filtered = df_filtered[df_filtered["CENTRO"] == centro_sel]
-    if turno_sel != "Todos":
-        df_filtered = df_filtered[df_filtered["GRUPO_TURNO"] == turno_sel]
 
-    cursos = ["Todos"] + sorted(list(df_filtered["CURSO"].dropna().unique()))
-    curso_sel = st.selectbox("Curso Específico", cursos)
+    # 1. Centro
+    if "CENTRO" in df_filtered.columns:
+        centros = ["Todos"] + sorted([str(x) for x in df_filtered["CENTRO"].dropna().unique()])
+        centro_sel = st.selectbox("Centro de Ensino", centros)
+        if centro_sel != "Todos":
+            df_filtered = df_filtered[df_filtered["CENTRO"] == centro_sel]
 
-    if curso_sel != "Todos":
-        df_filtered = df_filtered[df_filtered["CURSO"] == curso_sel]
+    # 2. Turno
+    if "GRUPO_TURNO" in df_filtered.columns:
+        turnos = ["Todos"] + sorted([str(x) for x in df_filtered["GRUPO_TURNO"].dropna().unique()])
+        turno_sel = st.selectbox("Turno do Curso", turnos)
+        if turno_sel != "Todos":
+            df_filtered = df_filtered[df_filtered["GRUPO_TURNO"] == turno_sel]
+
+    # 3. Curso
+    if "CURSO" in df_filtered.columns:
+        cursos = ["Todos"] + sorted([str(x) for x in df_filtered["CURSO"].dropna().unique()])
+        curso_sel = st.selectbox("Curso Específico", cursos)
+        if curso_sel != "Todos":
+            df_filtered = df_filtered[df_filtered["CURSO"] == curso_sel]
+
+    # 4. Raça / Cor (Dimensão Raça)
+    col_raca = "RACA_DESCRICAO" if "RACA_DESCRICAO" in df_filtered.columns else ("DESCRICAO_RACA" if "DESCRICAO_RACA" in df_filtered.columns else None)
+    if col_raca:
+        racas = ["Todos"] + sorted([str(x) for x in df_filtered[col_raca].dropna().unique()])
+        raca_sel = st.selectbox("Raça / Cor", racas)
+        if raca_sel != "Todos":
+            df_filtered = df_filtered[df_filtered[col_raca] == raca_sel]
+
+    # 5. Sexo / Gênero (Dimensão Sexo)
+    col_sexo = "SEXO_DESCRICAO" if "SEXO_DESCRICAO" in df_filtered.columns else ("DESCRICAO_SEXO" if "DESCRICAO_SEXO" in df_filtered.columns else None)
+    if col_sexo:
+        sexos = ["Todos"] + sorted([str(x) for x in df_filtered[col_sexo].dropna().unique()])
+        sexo_sel = st.selectbox("Sexo / Gênero", sexos)
+        if sexo_sel != "Todos":
+            df_filtered = df_filtered[df_filtered[col_sexo] == sexo_sel]
+
+    # 6. Modalidade de Ingresso (Dimensão Modalidade)
+    col_mod = "MODALIDADE_DESCRICAO" if "MODALIDADE_DESCRICAO" in df_filtered.columns else ("MODALIDADE" if "MODALIDADE" in df_filtered.columns else None)
+    if col_mod:
+        modalidades = ["Todos"] + sorted([str(x) for x in df_filtered[col_mod].dropna().unique()])
+        modalidade_sel = st.selectbox("Modalidade de Ingresso", modalidades)
+        if modalidade_sel != "Todos":
+            df_filtered = df_filtered[df_filtered[col_mod] == modalidade_sel]
 
     st.markdown("---")
     st.markdown("<p style='font-size: 0.75rem; color: #94a3b8;'>UFPB - Campus I</p>", unsafe_allow_html=True)
@@ -112,10 +183,10 @@ with st.sidebar:
 st.markdown("<h2 style='font-weight: 700; color: #0f172a; margin-bottom: 2px;'>Diagnóstico de Assistência Estudantil</h2>", unsafe_allow_html=True)
 st.markdown("<p style='color: #475569; font-size: 0.9rem; margin-bottom: 20px;'>Relatório de monitoramento de demanda reprimida e alocação orçamentária</p>", unsafe_allow_html=True)
 
-total_alunos = df_filtered["TOTAL_ALUNOS"].sum()
-total_cotistas = df_filtered.loc[df_filtered["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum()
-total_assistidos = df_filtered.loc[df_filtered["RECEBE_AUXILIO"] == 1, "TOTAL_ALUNOS"].sum()
-total_idpna = df_filtered["TOTAL_IDPNA"].sum()
+total_alunos = df_filtered["TOTAL_ALUNOS"].sum() if "TOTAL_ALUNOS" in df_filtered.columns else 0
+total_cotistas = df_filtered.loc[df_filtered["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum() if "IN_RESERVA_VAGAS" in df_filtered.columns else 0
+total_assistidos = df_filtered.loc[df_filtered["RECEBE_AUXILIO"] == 1, "TOTAL_ALUNOS"].sum() if "RECEBE_AUXILIO" in df_filtered.columns else 0
+total_idpna = df_filtered["TOTAL_IDPNA"].sum() if "TOTAL_IDPNA" in df_filtered.columns else 0
 
 pct_cotistas = (total_cotistas / total_alunos * 100) if total_alunos > 0 else 0
 pct_cobertura = (total_assistidos / total_cotistas * 100) if total_cotistas > 0 else 0
@@ -198,18 +269,19 @@ with tab1:
                 """
                 <div class="saas-card">
                     <h4 style="font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-bottom: 2px;">Matriz de Cobertura por Curso</h4>
-                    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 16px;">Relação entre alunos cotistas e bolsistas ativos</p>
+                    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 16px;">Relação entre alunos cotistas e cotistas com apoio</p>
             """,
                 unsafe_allow_html=True,
             )
 
+            # Agrupamento filtrando estritamente cotistas assistidos para alinhamento conceitual
             matriz_curso = (
                 df_filtered.groupby(["CURSO", "CENTRO"])
                 .apply(
                     lambda x: pd.Series({
-                        "TOTAL_COTISTAS": x.loc[x["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum(),
-                        "TOTAL_COM_APOIO": x.loc[x["RECEBE_AUXILIO"] == 1, "TOTAL_ALUNOS"].sum(),
-                        "TOTAL_IDPNA": x["TOTAL_IDPNA"].sum(),
+                        "TOTAL_COTISTAS": x.loc[x["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum() if "IN_RESERVA_VAGAS" in x.columns else 0,
+                        "COTISTAS_ATENDIDOS": x.loc[(x["IN_RESERVA_VAGAS"] == 1) & (x["RECEBE_AUXILIO"] == 1), "TOTAL_ALUNOS"].sum() if "IN_RESERVA_VAGAS" in x.columns and "RECEBE_AUXILIO" in x.columns else 0,
+                        "TOTAL_IDPNA": x["TOTAL_IDPNA"].sum() if "TOTAL_IDPNA" in x.columns else 0,
                     }),
                     include_groups=False,
                 )
@@ -223,7 +295,7 @@ with tab1:
                 fig_scatter = px.scatter(
                     matriz_curso,
                     x="TOTAL_COTISTAS",
-                    y="TOTAL_COM_APOIO",
+                    y="COTISTAS_ATENDIDOS",
                     size="TOTAL_IDPNA",
                     color_discrete_sequence=["#1e3a8a"],
                     hover_name="CURSO",
@@ -245,7 +317,7 @@ with tab1:
                     margin=dict(l=0, r=0, t=0, b=0),
                     showlegend=False,
                     xaxis=dict(showgrid=True, gridcolor="#f1f5f9", title="Nº Cotistas"),
-                    yaxis=dict(showgrid=True, gridcolor="#f1f5f9", title="Nº Atendidos"),
+                    yaxis=dict(showgrid=True, gridcolor="#f1f5f9", title="Cotistas Atendidos"),
                     height=330,
                 )
                 st.plotly_chart(fig_scatter, use_container_width=True)
@@ -253,7 +325,7 @@ with tab1:
                 st.info("Sem dados suficientes para exibir a matriz.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # Tabela Executiva
+        # Tabela Executiva Corrigida
         st.markdown(
             """
             <div class="saas-card">
@@ -264,8 +336,12 @@ with tab1:
 
         if not matriz_curso.empty and "TOTAL_IDPNA" in matriz_curso.columns:
             df_table = matriz_curso.sort_values("TOTAL_IDPNA", ascending=False).copy()
-            df_table["Taxa Desassistência (%)"] = ((df_table["TOTAL_IDPNA"] / df_table["TOTAL_COTISTAS"]) * 100).round(1)
-            df_table.columns = ["Curso", "Centro", "Nº Cotistas", "Nº Atendidos", "Fila IDPNA", "Taxa Desassistência (%)"]
+            df_table["Taxa Desassistência (%)"] = np.where(
+                df_table["TOTAL_COTISTAS"] > 0,
+                ((df_table["TOTAL_IDPNA"] / df_table["TOTAL_COTISTAS"]) * 100).round(1),
+                0
+            )
+            df_table.columns = ["Curso", "Centro", "Nº Cotistas", "Cotistas Atendidos", "Fila IDPNA", "Taxa Desassistência (%)"]
 
             st.dataframe(
                 df_table,
@@ -298,7 +374,7 @@ with tab2:
 
         df_cot_turno = df_filtered[
             (df_filtered["IN_RESERVA_VAGAS"] == 1) & (df_filtered["GRUPO_TURNO"].isin(["Diurno", "Noturno"]))
-        ]
+        ] if "IN_RESERVA_VAGAS" in df_filtered.columns and "GRUPO_TURNO" in df_filtered.columns else pd.DataFrame()
 
         if df_cot_turno.empty:
             st.info("Não há dados de cotistas para os turnos selecionados.")
@@ -315,7 +391,11 @@ with tab2:
                 )
                 .reset_index()
             )
-            resumo_turno["PCT_DESASSISTIDOS"] = (resumo_turno["DESASSISTIDOS"] / resumo_turno["TOTAL_COTISTAS"] * 100).round(1)
+            resumo_turno["PCT_DESASSISTIDOS"] = np.where(
+                resumo_turno["TOTAL_COTISTAS"] > 0,
+                (resumo_turno["DESASSISTIDOS"] / resumo_turno["TOTAL_COTISTAS"] * 100).round(1),
+                0
+            )
 
             with col_t1:
                 st.markdown(
@@ -403,8 +483,10 @@ with tab3:
         st.info("Nenhum registro encontrado para a combinação de filtros selecionada.")
     else:
         def calc_equidade(df, col_demo):
+            if col_demo not in df.columns:
+                return pd.DataFrame()
             tot = df.groupby(col_demo)["TOTAL_ALUNOS"].sum()
-            ast = df[df["RECEBE_AUXILIO"] == 1].groupby(col_demo)["TOTAL_ALUNOS"].sum()
+            ast = df[df["RECEBE_AUXILIO"] == 1].groupby(col_demo)["TOTAL_ALUNOS"].sum() if "RECEBE_AUXILIO" in df.columns else pd.Series(dtype=float)
             df_c = pd.concat([tot, ast], axis=1, keys=["Total Campus", "Assistidos"]).fillna(0)
             
             tot_sum = df_c["Total Campus"].sum()
@@ -427,26 +509,30 @@ with tab3:
                 unsafe_allow_html=True,
             )
 
-            df_raca = calc_equidade(df_filtered, "RACA_DESCRICAO")
+            col_raca_plot = col_raca if col_raca else "RACA_DESCRICAO"
+            df_raca = calc_equidade(df_filtered, col_raca_plot)
 
-            fig_raca = px.bar(
-                df_raca,
-                x="RACA_DESCRICAO",
-                y="Diferença (p.p.)",
-                text="Diferença (p.p.)",
-                color="Diferença (p.p.)",
-                color_continuous_scale=["#64748b", "#cbd5e1", "#1e3a8a"],
-            )
-            fig_raca.update_traces(texttemplate="%{text:+.1f} p.p.", textposition="outside")
-            fig_raca.update_layout(
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                coloraxis_showscale=False,
-                yaxis=dict(title="", showgrid=True, gridcolor="#f1f5f9"),
-                xaxis=dict(title=""),
-                height=280,
-            )
-            st.plotly_chart(fig_raca, use_container_width=True)
+            if not df_raca.empty:
+                fig_raca = px.bar(
+                    df_raca,
+                    x=col_raca_plot,
+                    y="Diferença (p.p.)",
+                    text="Diferença (p.p.)",
+                    color="Diferença (p.p.)",
+                    color_continuous_scale=["#64748b", "#cbd5e1", "#1e3a8a"],
+                )
+                fig_raca.update_traces(texttemplate="%{text:+.1f} p.p.", textposition="outside")
+                fig_raca.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    coloraxis_showscale=False,
+                    yaxis=dict(title="", showgrid=True, gridcolor="#f1f5f9"),
+                    xaxis=dict(title=""),
+                    height=280,
+                )
+                st.plotly_chart(fig_raca, use_container_width=True)
+            else:
+                st.info("Dimensão de Raça não disponível.")
             st.markdown("</div>", unsafe_allow_html=True)
 
         with ce2:
@@ -459,24 +545,28 @@ with tab3:
                 unsafe_allow_html=True,
             )
 
-            df_sexo = calc_equidade(df_filtered, "SEXO_DESCRICAO")
+            col_sexo_plot = col_sexo if col_sexo else "SEXO_DESCRICAO"
+            df_sexo = calc_equidade(df_filtered, col_sexo_plot)
 
-            fig_sexo = px.bar(
-                df_sexo,
-                x="SEXO_DESCRICAO",
-                y="Diferença (p.p.)",
-                text="Diferença (p.p.)",
-                color="Diferença (p.p.)",
-                color_continuous_scale=["#64748b", "#cbd5e1", "#1e3a8a"],
-            )
-            fig_sexo.update_traces(texttemplate="%{text:+.1f} p.p.", textposition="outside")
-            fig_sexo.update_layout(
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                coloraxis_showscale=False,
-                yaxis=dict(title="", showgrid=True, gridcolor="#f1f5f9"),
-                xaxis=dict(title=""),
-                height=280,
-            )
-            st.plotly_chart(fig_sexo, use_container_width=True)
+            if not df_sexo.empty:
+                fig_sexo = px.bar(
+                    df_sexo,
+                    x=col_sexo_plot,
+                    y="Diferença (p.p.)",
+                    text="Diferença (p.p.)",
+                    color="Diferença (p.p.)",
+                    color_continuous_scale=["#64748b", "#cbd5e1", "#1e3a8a"],
+                )
+                fig_sexo.update_traces(texttemplate="%{text:+.1f} p.p.", textposition="outside")
+                fig_sexo.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    coloraxis_showscale=False,
+                    yaxis=dict(title="", showgrid=True, gridcolor="#f1f5f9"),
+                    xaxis=dict(title=""),
+                    height=280,
+                )
+                st.plotly_chart(fig_sexo, use_container_width=True)
+            else:
+                st.info("Dimensão de Sexo não disponível.")
             st.markdown("</div>", unsafe_allow_html=True)
