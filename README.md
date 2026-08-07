@@ -1,4 +1,4 @@
-﻿# Análise Comparativa do Perfil Discente e da Demanda Potencial por Assistência Estudantil — UFPB Campus I
+# Análise Comparativa do Perfil Discente e da Demanda Potencial por Assistência Estudantil — UFPB Campus I
 
 Projeto que caracteriza o perfil discente e estima a proxy de demanda potencial por assistência estudantil no Campus I da Universidade Federal da Paraíba (UFPB). O repositório traz notebooks, scripts de transformação, artefatos processados e um dashboard para exploração dos resultados.
 
@@ -59,8 +59,8 @@ Ressalvas metodológicas (obrigatórias):
 - Análises exploratórias e validações estatísticas: notebooks 04 e 05.
 - Visualização: dashboard Streamlit em app/app.py consome os CSVs processados.
 
-## Estrutura do repositório (auditoria real)
-
+## Estrutura do repositório
+```
 Projeto-Analise-de-Dados-main/
 ├── .gitignore
 ├── README.md
@@ -104,6 +104,8 @@ Projeto-Analise-de-Dados-main/
     ├── dimensions/                    (módulos de construção de dimensões)
     ├── facts/                         (construção da tabela fato: fato_assistencia.py)
     └── utils/                         (utils / dicionários)
+```
+
 
 ## Principais arquivos e funções
 
@@ -127,14 +129,15 @@ Projeto-Analise-de-Dados-main/
 1. Criar e ativar um ambiente virtual Python
 2. Instalar dependências:
 
-```
+```Bash
 pip install -r requirements.txt
 ```
 
 3. (Opcional) Reproduzir processamento: executar notebooks 01 → 02 → 03 para gerar `data/processed/`.
+
 4. Executar o dashboard:
 
-```
+```Bash
 streamlit run app/app.py
 ```
 
@@ -173,7 +176,3 @@ Seguir os notebooks na ordem indicada garante a reprodução dos CSVs processado
 - Dashboard: implementado em app/app.py
 
 ---
-
-Observação sobre logo institucional
-
-Não foi encontrada uma logo da UFPB no repositório. Para incluir, adicione o arquivo em assets/ (ex.: assets/ufpb.png) e referencie no topo do README.
