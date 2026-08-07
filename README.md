@@ -1,8 +1,12 @@
+<p align="center">
+  <img src="outputs/figures/logo_ufpb.png" alt="Universidade Federal da Paraíba" width="180">
+</p>
+
 # Análise Comparativa do Perfil Discente e da Demanda Potencial por Assistência Estudantil — UFPB Campus I
 
 Projeto que caracteriza o perfil discente e estima a proxy de demanda potencial por assistência estudantil no Campus I da Universidade Federal da Paraíba (UFPB). O repositório traz notebooks, scripts de transformação, artefatos processados e um dashboard para exploração dos resultados.
 
-[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-Interactive-orange?logo=streamlit)](https://streamlit.io/)
 [![Pandas](https://img.shields.io/badge/Pandas-data-blue?logo=pandas)](https://pandas.pydata.org/)
 [![NumPy](https://img.shields.io/badge/NumPy-numeric-blue?logo=numpy)](https://numpy.org/)
