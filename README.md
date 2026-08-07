@@ -24,27 +24,27 @@ Este repositório contém o pipeline analítico, notebooks e o dashboard utiliza
 ## Telas do Dashboard
 
 <p align="center">
-  <img src="outputs/figures/assets/visao-geral.png" alt="Visão Geral do Dashboard" width="85%">
+  <img src="./outputs/figures/assets/visao-geral.png" alt="Visão Geral do Dashboard" width="85%">
 </p>
 
 ### Priorização de Editais e Matriz de Cobertura
 <p align="center">
-  <img src="outputs/figures/assets/priorizacao-editais.png" alt="Priorização de Editais" width="85%">
+  <img src="./outputs/figures/assets/priorizacao-editais.png" alt="Priorização de Editais" width="85%">
 </p>
 
 ### Detalhamento Tático por Curso
 <p align="center">
-  <img src="outputs/figures/assets/detalhamento-tatico.png" alt="Detalhamento Tático" width="85%">
+  <img src="./outputs/figures/assets/detalhamento-tatico.png" alt="Detalhamento Tático" width="85%">
 </p>
 
 ### Análise de Turno e Estatística
 <p align="center">
-  <img src="outputs/figures/assets/analise-turno.png" alt="Análise de Turno" width="85%">
+  <img src="./outputs/figures/assets/analise-turno.png" alt="Análise de Turno" width="85%">
 </p>
 
 ### Equidade Demográfica
 <p align="center">
-  <img src="outputs/figures/assets/equidade-demografica.png" alt="Equidade Demográfica" width="85%">
+  <img src="./outputs/figures/assets/equidade-demografica.png" alt="Equidade Demográfica" width="85%">
 </p>
 
 ## Objetivo geral
