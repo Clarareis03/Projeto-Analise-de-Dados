@@ -94,7 +94,11 @@ Ressalvas metodológicas (obrigatórias):
 Projeto-Analise-de-Dados-main/
 ├── .gitignore
 ├── README.md
+├──.streamlit/
+│   └──config.toml
 ├── app/
+│   ├── assets/
+│   ├── css.py
 │   └── app.py                         (dashboard Streamlit — ponto de entrada)
 ├── data/
 │   ├── raw/
