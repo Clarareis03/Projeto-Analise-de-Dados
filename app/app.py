@@ -116,7 +116,7 @@ def load_data():
 df_raw = load_data()
 
 # -----------------------------------------------------------------------------
-# 3. BARRA LATERAL (FILTROS DE DIMENSÃO)
+# 3. BARRA LATERAL (FILTROS DE DIMENSÃO E AUXÍLIOS)
 # -----------------------------------------------------------------------------
 with st.sidebar:
     logo_path = ASSETS_DIR / "logo_ufpb.png"
@@ -173,6 +173,43 @@ with st.sidebar:
         modalidade_sel = st.selectbox("Modalidade de Ingresso", modalidades)
         if modalidade_sel != "Todos":
             df_filtered = df_filtered[df_filtered[col_mod] == modalidade_sel]
+
+    # 7. FILTROS DE AUXÍLIO / ASSISTÊNCIA ESTUDANTIL
+    st.markdown("<p style='font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-top: 10px; margin-bottom: 2px;'>Filtros de Auxílio</p>", unsafe_allow_html=True)
+
+    # 7.1 Status Geral
+    if "RECEBE_AUXILIO" in df_filtered.columns:
+        status_auxilio = st.selectbox("Status de Recebimento", ["Todos", "Recebe Auxílio", "Não Recebe Auxílio"])
+        if status_auxilio == "Recebe Auxílio":
+            df_filtered = df_filtered[df_filtered["RECEBE_AUXILIO"] == 1]
+        elif status_auxilio == "Não Recebe Auxílio":
+            df_filtered = df_filtered[df_filtered["RECEBE_AUXILIO"] == 0]
+
+    # 7.2 Mapeamento e Seleção de Auxílios Específicos
+    mapa_auxilios = {
+        "Alimentação": "IN_APOIO_ALIMENTACAO",
+        "Moradia": "IN_APOIO_MORADIA",
+        "Transporte": "IN_APOIO_TRANSPORTE",
+        "Material Didático": "IN_APOIO_MATERIAL_DIDATICO",
+        "Bolsa Permanência": "IN_APOIO_BOLSA_PERMANENCIA",
+        "Bolsa Trabalho": "IN_APOIO_BOLSA_TRABALHO",
+        "Apoio Social": "IN_APOIO_SOCIAL",
+    }
+
+    # Mantém apenas colunas que realmente existem no DataFrame
+    auxilios_validos = {nome: col for nome, col in mapa_auxilios.items() if col in df_filtered.columns}
+
+    if auxilios_validos:
+        auxilios_sel = st.multiselect(
+            "Tipos de Auxílio Específicos",
+            options=list(auxilios_validos.keys()),
+            help="Exibe registros que possuem pelo menos um dos auxílios selecionados."
+        )
+
+        if auxilios_sel:
+            cols_selecionadas = [auxilios_validos[nome] for nome in auxilios_sel]
+            # Filtra linhas onde a soma das colunas marcadas seja > 0 (recebe ao menos um dos selecionados)
+            df_filtered = df_filtered[df_filtered[cols_selecionadas].gt(0).any(axis=1)]
 
     st.markdown("---")
     st.markdown("<p style='font-size: 0.75rem; color: #94a3b8;'>UFPB - Campus I</p>", unsafe_allow_html=True)
