@@ -201,8 +201,6 @@ Seguir os notebooks na ordem indicada garante a reprodução dos CSVs processado
 
 - INEP — Censo da Educação Superior
 - SEDAP+ — extrações utilizadas (microdados)
-- PNAES — contexto de políticas de assistência estudantil
-- Relatório final do trabalho: docs/RelatorioFinal_1.0.pdf
 
 ## Status
 
