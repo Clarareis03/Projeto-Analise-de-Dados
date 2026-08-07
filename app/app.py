@@ -150,7 +150,7 @@ with st.sidebar:
         if curso_sel != "Todos":
             df_filtered = df_filtered[df_filtered["CURSO"] == curso_sel]
 
-    # 4. Raça / Cor
+    # 4. Raça / Cor (Dimensão Raça)
     col_raca = "RACA_DESCRICAO" if "RACA_DESCRICAO" in df_filtered.columns else ("DESCRICAO_RACA" if "DESCRICAO_RACA" in df_filtered.columns else None)
     if col_raca:
         racas = ["Todos"] + sorted([str(x) for x in df_filtered[col_raca].dropna().unique()])
@@ -158,7 +158,7 @@ with st.sidebar:
         if raca_sel != "Todos":
             df_filtered = df_filtered[df_filtered[col_raca] == raca_sel]
 
-    # 5. Sexo / Gênero
+    # 5. Sexo / Gênero (Dimensão Sexo)
     col_sexo = "SEXO_DESCRICAO" if "SEXO_DESCRICAO" in df_filtered.columns else ("DESCRICAO_SEXO" if "DESCRICAO_SEXO" in df_filtered.columns else None)
     if col_sexo:
         sexos = ["Todos"] + sorted([str(x) for x in df_filtered[col_sexo].dropna().unique()])
@@ -166,7 +166,7 @@ with st.sidebar:
         if sexo_sel != "Todos":
             df_filtered = df_filtered[df_filtered[col_sexo] == sexo_sel]
 
-    # 6. Modalidade de Ingresso
+    # 6. Modalidade de Ingresso (Dimensão Modalidade)
     col_mod = "MODALIDADE_DESCRICAO" if "MODALIDADE_DESCRICAO" in df_filtered.columns else ("MODALIDADE" if "MODALIDADE" in df_filtered.columns else None)
     if col_mod:
         modalidades = ["Todos"] + sorted([str(x) for x in df_filtered[col_mod].dropna().unique()])
@@ -178,70 +178,58 @@ with st.sidebar:
     st.markdown("<p style='font-size: 0.75rem; color: #94a3b8;'>UFPB - Campus I</p>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 4. CABEÇALHO & CARDS KPI (PAINEL DE COBERTURA INSTITUCIONAL)
+# 4. CABEÇALHO & CARDS KPI
 # -----------------------------------------------------------------------------
-st.markdown("<h2 style='font-weight: 700; color: #0f172a; margin-bottom: 2px;'>Painel de Cobertura Institucional — UFPB Campus I</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='font-weight: 700; color: #0f172a; margin-bottom: 2px;'>Diagnóstico de Assistência Estudantil</h2>", unsafe_allow_html=True)
 st.markdown("<p style='color: #475569; font-size: 0.9rem; margin-bottom: 20px;'>Relatório de monitoramento de demanda reprimida e alocação orçamentária</p>", unsafe_allow_html=True)
 
-# Métricas Calculadas alinhadas com o Painel de Cobertura Institucional
 total_alunos = df_filtered["TOTAL_ALUNOS"].sum() if "TOTAL_ALUNOS" in df_filtered.columns else 0
 total_cotistas = df_filtered.loc[df_filtered["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum() if "IN_RESERVA_VAGAS" in df_filtered.columns else 0
-
-# Cotistas que efetivamente recebem auxílio PRAPE
-cotistas_atendidos = (
-    df_filtered.loc[(df_filtered["IN_RESERVA_VAGAS"] == 1) & (df_filtered["RECEBE_AUXILIO"] == 1), "TOTAL_ALUNOS"].sum()
-    if "IN_RESERVA_VAGAS" in df_filtered.columns and "RECEBE_AUXILIO" in df_filtered.columns
-    else 0
-)
-
+total_assistidos = df_filtered.loc[(df_filtered["IN_RESERVA_VAGAS"] == 1) & (df_filtered["RECEBE_AUXILIO"] == 1), "TOTAL_ALUNOS"].sum() if ("IN_RESERVA_VAGAS" in df_filtered.columns and "RECEBE_AUXILIO" in df_filtered.columns) else 0
 total_idpna = df_filtered["TOTAL_IDPNA"].sum() if "TOTAL_IDPNA" in df_filtered.columns else 0
 
-# Taxas Percentuais
 pct_cotistas = (total_cotistas / total_alunos * 100) if total_alunos > 0 else 0
-cobertura_prape = (cotistas_atendidos / total_cotistas * 100) if total_cotistas > 0 else 0
-
-# Formatação visual dos números no padrão brasileiro (ex: 31.210 e 11.730)
-str_total_alunos = f"{total_alunos:,.0f}".replace(",", ".")
-str_idpna = f"{total_idpna:,.0f}".replace(",", ".")
+pct_cobertura = (total_assistidos / total_cotistas * 100) if total_cotistas > 0 else 0
+pct_idpna = (total_idpna / total_cotistas * 100) if total_cotistas > 0 else 0
 
 k1, k2, k3, k4 = st.columns(4)
 
 with k1:
     render_metric_card(
-        "Total de Estudantes (Campus I)",
-        str_total_alunos,
+        "MATRICULADOS",
+        f"{total_alunos:,.0f}",
         "Corpo discente ativo",
         "TOTAL",
-        "default"
+        "default",
     )
 
 with k2:
     render_metric_card(
-        "% Ingressantes por Cotas",
-        f"{pct_cotistas:.1f}%",
-        f"{total_cotistas:,.0f}".replace(",", ".") + " estudantes cotistas",
-        "COTAS",
-        "default"
+        "ESTUDANTES COTISTAS",
+        f"{total_cotistas:,.0f}",
+        "Ações Afirmativas",
+        f"{pct_cotistas:.1f}% DO TOTAL",
+        "default",
     )
 
 with k3:
     render_metric_card(
-        "Cobertura PRAPE sobre Cotistas",
-        f"{cobertura_prape:.1f}%",
-        f"{cotistas_atendidos:,.0f}".replace(",", ".") + " cotistas assistidos",
-        "PRAPE",
+        "ATENDIDOS COM AUXÍLIO",
+        f"{total_assistidos:,.0f}",
+        "Bolsistas ativos",
+        f"{pct_cobertura:.1f}% COBERTURA",
         "primary",
-        value_color="#10b981"  # Destaque verde para cobertura
+        value_color="#1e3a8a",
     )
 
 with k4:
     render_metric_card(
-        "Demanda Potencial Não Atendida (IDPNA)",
-        str_idpna,
-        "Fila de espera de cotistas",
-        "IDPNA",
+        "DEMANDA REPRIMIDA",
+        f"{total_idpna:,.0f}",
+        "Cotistas sem assistência (IDPNA)",
+        f"{pct_idpna:.1f}% FILA",
         "primary",
-        value_color="#ef4444"  # Destaque vermelho para demanda reprimida
+        value_color="#1e3a8a",
     )
 
 # -----------------------------------------------------------------------------
@@ -362,7 +350,6 @@ with tab1:
                 st.info("Sem dados suficientes para exibir a matriz.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # Tabela Executiva Detalhada
         st.markdown(
             """
             <div class="saas-card">
