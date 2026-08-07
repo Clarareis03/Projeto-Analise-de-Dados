@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="outputs/figures/logo_ufpb.png" alt="Universidade Federal da Paraíba" width="180">
+  <img src="outputs/figures/assets/logo_ufpb.png" alt="Universidade Federal da Paraíba" width="180">
 </p>
 
 # Análise Comparativa do Perfil Discente e da Demanda Potencial por Assistência Estudantil — UFPB Campus I
@@ -20,6 +20,24 @@ Projeto que caracteriza o perfil discente e estima a proxy de demanda potencial 
 ## Sobre o projeto
 
 Este repositório contém o pipeline analítico, notebooks e o dashboard utilizados no estudo "Análise comparativa do perfil discente e da demanda potencial por assistência estudantil: um estudo sobre o Campus I da Universidade Federal da Paraíba". O objetivo é caracterizar o corpo discente de graduação do Campus I e identificar grupos com potencial demanda por assistência institucional.
+
+## Demonstração do DashBoard
+
+<div align="center">
+
+|  Home / Dashboard | 📸 Feed da Comunidade |
+| :---: | :---: |
+| ![Home FocusU](outputs/figures/assets/logo_ufb.png) | ![Feed FocusU](outputs/figures/assets/logo_ufb.png) |
+
+| 👨 Gestão de Alunos |  Gerenciamento de Disciplinas |
+| :---: | :---: |
+| ![Alunos FocusU](images/alunos_preview.png) | ![Disciplinas FocusU](images/disciplinas_preview.png) |
+
+| 📅 Agenda Acadêmica | 📊 Estatísticas & Métricas |
+| :---: | :---: |
+| ![Agenda FocusU](images/agenda_preview.png) | ![Estatísticas FocusU](images/estatisticas_preview.png) |
+
+</div>
 
 ## Objetivo geral
 
