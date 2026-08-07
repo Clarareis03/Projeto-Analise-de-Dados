@@ -174,7 +174,7 @@ with st.sidebar:
         if modalidade_sel != "Todos":
             df_filtered = df_filtered[df_filtered[col_mod] == modalidade_sel]
 
-    # 7. FILTROS DE AUXÍLIO / ASSISTÊNCIA ESTUDANTIL
+    # 7. Filtros de Auxílio
     st.markdown("<p style='font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-top: 10px; margin-bottom: 2px;'>Filtros de Auxílio</p>", unsafe_allow_html=True)
 
     # 7.1 Status Geral
@@ -196,7 +196,6 @@ with st.sidebar:
         "Apoio Social": "IN_APOIO_SOCIAL",
     }
 
-    # Mantém apenas colunas que realmente existem no DataFrame
     auxilios_validos = {nome: col for nome, col in mapa_auxilios.items() if col in df_filtered.columns}
 
     if auxilios_validos:
@@ -208,7 +207,6 @@ with st.sidebar:
 
         if auxilios_sel:
             cols_selecionadas = [auxilios_validos[nome] for nome in auxilios_sel]
-            # Filtra linhas onde a soma das colunas marcadas seja > 0 (recebe ao menos um dos selecionados)
             df_filtered = df_filtered[df_filtered[cols_selecionadas].gt(0).any(axis=1)]
 
     st.markdown("---")
@@ -499,37 +497,50 @@ with tab2:
 
                 if len(resumo_turno) == 2 and resumo_turno["TOTAL_COTISTAS"].sum() > 0:
                     obs = resumo_turno[["ASSISTIDOS", "DESASSISTIDOS"]].values
-                    chi2, p_val, gl, _ = chi2_contingency(obs)
-
-                    st.markdown(
-                        f"""
-                        <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
-                            <span style="font-size: 0.8rem; color: #64748b;">Estatística Qui-Quadrado</span><br>
-                            <b style="font-size: 1.3rem; color: #0f172a;">{chi2:.2f}</b> 
-                            <span style="font-size: 0.85rem; color: #64748b; margin-left: 16px;">p-valor: <b>{p_val:.4e}</b></span>
-                        </div>
-                    """,
-                        unsafe_allow_html=True,
+                    
+                    valido = (
+                        obs.shape == (2, 2)
+                        and (obs.sum(axis=1) > 0).all()
+                        and (obs.sum(axis=0) > 0).all()
                     )
 
-                    if p_val < 0.05:
-                        st.markdown(
-                            """
-                            <div class="badge-primary" style="display: block; text-align: center; font-size: 0.8rem; padding: 10px;">
-                                Diferença estatisticamente significativa observada entre os turnos (p < 0,05).
-                            </div>
-                        """,
-                            unsafe_allow_html=True,
-                        )
+                    if valido:
+                        try:
+                            chi2, p_val, gl, _ = chi2_contingency(obs)
+
+                            st.markdown(
+                                f"""
+                                <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+                                    <span style="font-size: 0.8rem; color: #64748b;">Estatística Qui-Quadrado</span><br>
+                                    <b style="font-size: 1.3rem; color: #0f172a;">{chi2:.2f}</b> 
+                                    <span style="font-size: 0.85rem; color: #64748b; margin-left: 16px;">p-valor: <b>{p_val:.4e}</b></span>
+                                </div>
+                            """,
+                                unsafe_allow_html=True,
+                            )
+
+                            if p_val < 0.05:
+                                st.markdown(
+                                    """
+                                    <div class="badge-primary" style="display: block; text-align: center; font-size: 0.8rem; padding: 10px;">
+                                        Diferença estatisticamente significativa observada entre os turnos (p < 0,05).
+                                    </div>
+                                """,
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                st.markdown(
+                                    """
+                                    <div class="badge-default" style="display: block; text-align: center; font-size: 0.8rem; padding: 10px;">
+                                        Sem diferença estatística significativa na proporção observada (p >= 0,05).
+                                    </div>
+                                """,
+                                    unsafe_allow_html=True,
+                                )
+                        except ValueError:
+                            st.info("Não foi possível realizar o teste de Qui-Quadrado devido à baixa frequência esperada em uma das categorias para a seleção atual.")
                     else:
-                        st.markdown(
-                            """
-                            <div class="badge-default" style="display: block; text-align: center; font-size: 0.8rem; padding: 10px;">
-                                Sem diferença estatística significativa na proporção observada (p >= 0,05).
-                            </div>
-                        """,
-                            unsafe_allow_html=True,
-                        )
+                        st.info("É necessário ter pelo menos 1 registro assistido e desassistido em ambos os turnos para calcular o Qui-Quadrado.")
                 else:
                     st.info("Necessário dados de ambos os turnos (Diurno e Noturno) para realizar o teste estatístico.")
                 st.markdown("</div>", unsafe_allow_html=True)
