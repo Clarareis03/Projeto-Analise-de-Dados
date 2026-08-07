@@ -21,23 +21,31 @@ Projeto que caracteriza o perfil discente e estima a proxy de demanda potencial 
 
 Este repositório contém o pipeline analítico, notebooks e o dashboard utilizados no estudo "Análise comparativa do perfil discente e da demanda potencial por assistência estudantil: um estudo sobre o Campus I da Universidade Federal da Paraíba". O objetivo é caracterizar o corpo discente de graduação do Campus I e identificar grupos com potencial demanda por assistência institucional.
 
-## Demonstração do DashBoard
+## Telas do Dashboard
 
-<div align="center">
+<p align="center">
+  <img src="outputs/figures/assets/visao-geral.png" alt="Visão Geral do Dashboard" width="85%">
+</p>
 
-|  Home / Dashboard | 📸 Feed da Comunidade |
-| :---: | :---: |
-| ![Home FocusU](outputs/figures/assets/logo_ufb.png) | ![Feed FocusU](outputs/figures/assets/logo_ufb.png) |
+### Priorização de Editais e Matriz de Cobertura
+<p align="center">
+  <img src="outputs/figures/assets/priorizacao-editais.png" alt="Priorização de Editais" width="85%">
+</p>
 
-| 👨 Gestão de Alunos |  Gerenciamento de Disciplinas |
-| :---: | :---: |
-| ![Alunos FocusU](images/alunos_preview.png) | ![Disciplinas FocusU](images/disciplinas_preview.png) |
+### Detalhamento Tático por Curso
+<p align="center">
+  <img src="outputs/figures/assets/detalhamento-tatico.png" alt="Detalhamento Tático" width="85%">
+</p>
 
-| 📅 Agenda Acadêmica | 📊 Estatísticas & Métricas |
-| :---: | :---: |
-| ![Agenda FocusU](images/agenda_preview.png) | ![Estatísticas FocusU](images/estatisticas_preview.png) |
+### Análise de Turno e Estatística
+<p align="center">
+  <img src="outputs/figures/assets/analise-turno.png" alt="Análise de Turno" width="85%">
+</p>
 
-</div>
+### Equidade Demográfica
+<p align="center">
+  <img src="outputs/figures/assets/equidade-demografica.png" alt="Equidade Demográfica" width="85%">
+</p>
 
 ## Objetivo geral
 
