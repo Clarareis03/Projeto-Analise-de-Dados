@@ -12,10 +12,4 @@ def criar_dim_modalidade() -> pd.DataFrame:
         "DESCRICAO": ["Presencial", "Educação a Distância"]
     })
 
-    # Renomeia para o padrão de atributo descritivo
-    dim_modalidade = dim_modalidade.rename(columns={"CD_MODALIDADE": "DESCRICAO"})
-
-    # Cria a chave primária sequencial
-    dim_modalidade.insert(0, "ID_MODALIDADE", range(1, len(dim_modalidade) + 1))
-
-    return dim_modalidade
+    
