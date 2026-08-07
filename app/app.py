@@ -1,22 +1,92 @@
 # app.py
 from pathlib import Path
-import pandas as pd
 import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import chi2_contingency
 import streamlit as st
 
-# 1. Configuração da Página
+# -----------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DA PÁGINA & CSS CUSTOMIZADO (DESIGN EXECUTIVO DE CARDS)
+# -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Dashboard Assistência Estudantil — UFPB Campus I",
-    page_icon="📊",
+    page_title="Painel Executivo — Assistência Estudantil UFPB",
+    page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# 2. Mapeamento de Caminhos Relativos
-BASE_DIR = Path(__file__).parent.resolve() if "__file__" in locals() else Path.cwd()
+st.markdown(
+    """
+    <style>
+    /* Estilo Global e Fundo */
+    .stApp {
+        background-color: #f8fafc;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    
+    /* Estilização da Barra Lateral */
+    section[data-testid="stSidebar"] {
+        background-color: #0f172a !important;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #f1f5f9 !important;
+    }
+    
+    /* Cards Executivos */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stBlock"] {
+        border-radius: 12px;
+    }
+    
+    .exec-card {
+        background-color: #ffffff;
+        padding: 20px 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 15px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 4px;
+        margin-bottom: 2px;
+    }
+    .metric-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .metric-sub {
+        font-size: 0.8125rem;
+        color: #64748b;
+    }
+    
+    /* Destaques de Alerta */
+    .alert-text {
+        color: #dc2626;
+        font-weight: 600;
+    }
+    
+    /* Ocultar elementos desnecessários */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
+# -----------------------------------------------------------------------------
+# 2. RESOLUÇÃO DE CAMINHOS & DADOS
+# -----------------------------------------------------------------------------
+SCRIPT_DIR = Path(__file__).parent.resolve() if "__file__" in locals() else Path.cwd()
+BASE_DIR = SCRIPT_DIR if (SCRIPT_DIR / "data").exists() else SCRIPT_DIR.parent
+
 PATH_FATO = BASE_DIR / "data" / "processed" / "Fato" / "fato_assistencia.csv"
 PATH_DIM_CURSO = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_curso_ufpb_campus_1.csv"
 PATH_DIM_CENTRO = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_centro.csv"
@@ -25,20 +95,19 @@ PATH_DIM_SEXO = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_sexo.csv"
 PATH_DIM_TURNO = BASE_DIR / "data" / "processed" / "Dimensões" / "dim_turno.csv"
 
 
-# 3. Carregamento e Tratamento de Dados (Com Cache)
 @st.cache_data
 def load_data():
     if not PATH_FATO.exists():
-        st.error(f"Arquivo de fatos não encontrado em: {PATH_FATO}")
+        st.error(f"Base de dados não localizada no caminho: {PATH_FATO}")
         st.stop()
 
     df_fato = pd.read_csv(PATH_FATO, sep=";")
 
-    # Cruzamento com Dimensões
     if PATH_DIM_CURSO.exists():
         df_c = pd.read_csv(PATH_DIM_CURSO, sep=";")
-        df_fato = df_fato.merge(df_c[["CO_CURSO", "NO_CURSO"]], on="CO_CURSO", how="left")
-        df_fato.rename(columns={"NO_CURSO": "CURSO"}, inplace=True)
+        df_fato = df_fato.merge(df_c[["CO_CURSO", "NO_CURSO"]], on="CO_CURSO", how="left").rename(
+            columns={"NO_CURSO": "CURSO"}
+        )
 
     if PATH_DIM_CENTRO.exists():
         df_cent = pd.read_csv(PATH_DIM_CENTRO, sep=";")
@@ -56,13 +125,7 @@ def load_data():
         df_t = pd.read_csv(PATH_DIM_TURNO, sep=";").rename(columns={"DESCRICAO": "TURNO_DESCRICAO"})
         df_fato = df_fato.merge(df_t[["ID_TURNO", "TURNO_DESCRICAO"]], on="ID_TURNO", how="left")
 
-    # Mapeamento do Grupo de Turno (Diurno x Noturno)
-    mapa_turno = {
-        "Matutino": "Diurno",
-        "Vespertino": "Diurno",
-        "Integral": "Diurno",
-        "Noturno": "Noturno",
-    }
+    mapa_turno = {"Matutino": "Diurno", "Vespertino": "Diurno", "Integral": "Diurno", "Noturno": "Noturno"}
     df_fato["GRUPO_TURNO"] = df_fato["TURNO_DESCRICAO"].map(mapa_turno).fillna("Não informado")
 
     return df_fato
@@ -70,44 +133,49 @@ def load_data():
 
 df_raw = load_data()
 
-# 4. Barra Lateral (Filtros Interativos)
-st.sidebar.title("Filtros de Análise")
+# -----------------------------------------------------------------------------
+# 3. SIDEBAR DE CONTROLE E FILTROS
+# -----------------------------------------------------------------------------
+st.sidebar.markdown("## 🏛️ UFPB Campus I")
+st.sidebar.markdown("**Painel de Tomada de Decisão**")
 st.sidebar.markdown("---")
 
-centros_disponiveis = ["Todos"] + sorted(list(df_raw["CENTRO"].dropna().unique()))
-centro_sel = st.sidebar.selectbox("Centro de Ensino:", centros_disponiveis)
+centros = ["Todos"] + sorted(list(df_raw["CENTRO"].dropna().unique()))
+centro_sel = st.sidebar.selectbox("Centro de Ensino", centros)
 
-turnos_disponiveis = ["Todos"] + sorted(list(df_raw["GRUPO_TURNO"].unique()))
-turno_sel = st.sidebar.selectbox("Grupo de Turno:", turnos_disponiveis)
+turnos = ["Todos"] + sorted(list(df_raw["GRUPO_TURNO"].unique()))
+turno_sel = st.sidebar.selectbox("Turno do Curso", turnos)
 
-# Aplicar Filtros Dinâmicos
 df_filtered = df_raw.copy()
-
 if centro_sel != "Todos":
     df_filtered = df_filtered[df_filtered["CENTRO"] == centro_sel]
-
 if turno_sel != "Todos":
     df_filtered = df_filtered[df_filtered["GRUPO_TURNO"] == turno_sel]
 
-# Cursos dinâmicos com base nos centros/turnos selecionados
-cursos_disponiveis = ["Todos"] + sorted(list(df_filtered["CURSO"].dropna().unique()))
-curso_sel = st.sidebar.selectbox("Curso de Graduação:", cursos_disponiveis)
+cursos = ["Todos"] + sorted(list(df_filtered["CURSO"].dropna().unique()))
+curso_sel = st.sidebar.selectbox("Curso Específico", cursos)
 
 if curso_sel != "Todos":
     df_filtered = df_filtered[df_filtered["CURSO"] == curso_sel]
 
 st.sidebar.markdown("---")
-st.sidebar.info(
-    "**Fonte de Dados:** SEDAP+ (2023)[cite: 4]\n\n"
-    "**IDPNA:** Estudantes cotistas sem apoio social (`IN_RESERVA_VAGAS=1` e `RECEBE_AUXILIO=0`)[cite: 4, 5]."
+st.sidebar.caption(
+    "**Metodologia Storytelling:**\n"
+    "- Foco em lacunas de atendimento (IDPNA)\n"
+    "- Dados extraídos do SEDAP+ (2023)\n"
+    "- Resoluções PRAPE / UFPB"
 )
 
-# 5. Título do Dashboard
-st.title("📊 Painel de Assistência Estudantil e Vulnerabilidade")
-st.subheader("Universidade Federal da Paraíba — Campus I (Ano-base 2023)")
-st.markdown("---")
+# -----------------------------------------------------------------------------
+# 4. CABEÇALHO & CARDS EXECUTIVOS DE KPI (VISÃO GERAL)
+# -----------------------------------------------------------------------------
+st.markdown("## 📊 Diagnóstico de Assistência Estudantil e Demanda Reprimida")
+st.markdown(
+    " Monitoramento de vulnerabilidade socioeconômica e alocação orçamentária dos auxílios institucionais."
+)
+st.markdown("<br>", unsafe_allow_html=True)
 
-# 6. Cálculo dos KPIs Globais (Painel 1)
+# Cálculo dos Métricas Principais
 total_alunos = df_filtered["TOTAL_ALUNOS"].sum()
 total_cotistas = df_filtered.loc[df_filtered["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum()
 total_assistidos = df_filtered.loc[df_filtered["RECEBE_AUXILIO"] == 1, "TOTAL_ALUNOS"].sum()
@@ -115,131 +183,186 @@ total_idpna = df_filtered["TOTAL_IDPNA"].sum()
 
 pct_cotistas = (total_cotistas / total_alunos * 100) if total_alunos > 0 else 0
 pct_cobertura = (total_assistidos / total_cotistas * 100) if total_cotistas > 0 else 0
+pct_idpna = (total_idpna / total_cotistas * 100) if total_cotistas > 0 else 0
 
-# Exibição dos KPIs
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total de Alunos", f"{total_alunos:,.0f}")
-col2.metric("Estudantes Cotistas", f"{total_cotistas:,.0f}", f"{pct_cotistas:.1f}% do total")
-col3.metric("Cobertura PRAPE (Cotistas)", f"{pct_cobertura:.1f}%", f"{total_assistidos:,.0f} assistidos")
-col4.metric("Demanda Não Atendida (IDPNA)", f"{total_idpna:,.0f}", delta_color="inverse")
+# Exibição em Cards CSS
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-st.markdown("---")
+with kpi1:
+    st.markdown(
+        f"""
+        <div class="exec-card">
+            <div class="metric-label">Corpo Discente Total</div>
+            <div class="metric-value">{total_alunos:,.0f}</div>
+            <div class="metric-sub">Matriculados no recorte</div>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
 
-# 7. Abas da Aplicação
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🎯 Cobertura & Demandas por Curso",
-    "🌓 Desigualdade por Turno (Diurno x Noturno)",
-    "🧬 Equidade e Perfil Demográfico",
-    "🏢 Visão por Centro de Ensino",
+with kpi2:
+    st.markdown(
+        f"""
+        <div class="exec-card">
+            <div class="metric-label">Estudantes Cotistas</div>
+            <div class="metric-value">{total_cotistas:,.0f}</div>
+            <div class="metric-sub"><b>{pct_cotistas:.1f}%</b> do total de alunos</div>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+with kpi3:
+    st.markdown(
+        f"""
+        <div class="exec-card">
+            <div class="metric-label">Atendidos por Auxílios</div>
+            <div class="metric-value" style="color: #1e3a8a;">{total_assistidos:,.0f}</div>
+            <div class="metric-sub">Taxa de Cobertura: <b>{pct_cobertura:.1f}%</b></div>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+with kpi4:
+    st.markdown(
+        f"""
+        <div class="exec-card" style="border-left: 4px solid #dc2626;">
+            <div class="metric-label">Demanda Reprimida (IDPNA)</div>
+            <div class="metric-value" style="color: #dc2626;">{total_idpna:,.0f}</div>
+            <div class="metric-sub"><span class="alert-text">{pct_idpna:.1f}%</span> dos cotistas sem apoio</div>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+# -----------------------------------------------------------------------------
+# 5. ABAS COM FOCO EM DECISÃO E STORYTELLING
+# -----------------------------------------------------------------------------
+tab_prioridades, tab_turno, tab_equidade = st.tabs([
+    "🎯 Priorização de Editais (Cursos Críticos)",
+    "🌓 Análise de Impacto por Turno",
+    "🧬 Monitoramento de Equidade Racial e Gênero",
 ])
 
 # -----------------------------------------------------------------------------
-# TAB 1: Cobertura & Demandas por Curso (Perguntas 1 e 3)
+# TAB 1: PRIORIZAÇÃO DE EDITAIS
 # -----------------------------------------------------------------------------
-with tab1:
-    col_left, col_right = st.columns([1, 1])
+with tab_prioridades:
+    st.markdown("### Onde estão as maiores lacunas de atendimento da UFPB?")
+    st.caption("Cursos com maior volume absoluto de alunos cotistas desassistidos requerem prioridade nos novos editais da PRAPE.")
 
-    with col_left:
-        st.markdown("### Cobertura de Apoio Social entre Cotistas")
-        cotistas_df = df_filtered[df_filtered["IN_RESERVA_VAGAS"] == 1]
-        sem_apoio = cotistas_df.loc[cotistas_df["RECEBE_AUXILIO"] == 0, "TOTAL_ALUNOS"].sum()
-        com_apoio = cotistas_df.loc[cotistas_df["RECEBE_AUXILIO"] == 1, "TOTAL_ALUNOS"].sum()
+    col_chart1, col_chart2 = st.columns([1.2, 1])
 
-        fig_pie = px.pie(
-            names=["Sem Apoio Social (IDPNA)", "Com Apoio Social"],
-            values=[sem_apoio, com_apoio],
-            color_discrete_sequence=["#ef553b", "#636efa"],
-            hole=0.4,
-        )
-        fig_pie.update_traces(textinfo="percent+label")
-        fig_pie.update_layout(showlegend=False, margin=dict(t=30, b=0, l=0, r=0))
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    with col_right:
-        st.markdown("### Top 10 Cursos — Volume Absoluto de IDPNA")
-        df_cursos_idpna = (
+    with col_chart1:
+        st.markdown("**Top 10 Cursos em Volume Absoluto de IDPNA**")
+        df_top_idpna = (
             df_filtered.groupby("CURSO")["TOTAL_IDPNA"]
             .sum()
             .reset_index()
-            .sort_values("TOTAL_IDPNA", ascending=False)
-            .head(10)
+            .sort_values("TOTAL_IDPNA", ascending=True)
+            .tail(10)
         )
 
         fig_bar_top = px.bar(
-            df_cursos_idpna,
+            df_top_idpna,
             x="TOTAL_IDPNA",
             y="CURSO",
             orientation="h",
             text="TOTAL_IDPNA",
-            color="TOTAL_IDPNA",
-            color_continuous_scale="Reds",
+            color_discrete_sequence=["#dc2626"],
         )
+        fig_bar_top.update_traces(textposition="outside", cliponaxis=False)
         fig_bar_top.update_layout(
-            yaxis=dict(autorange="reversed"),
-            coloraxis_showscale=False,
-            margin=dict(t=30, b=0, l=0, r=0),
-            xaxis_title="Estudantes em IDPNA",
-            yaxis_title="",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            margin=dict(l=0, r=30, t=10, b=0),
+            xaxis=dict(showgrid=False, title="", showticklabels=False),
+            yaxis=dict(title="", showgrid=False),
+            height=380,
         )
         st.plotly_chart(fig_bar_top, use_container_width=True)
 
-    st.markdown("---")
-    st.markdown("### Matriz de Demanda Reprimida (Cotistas x Apoio Social por Curso)")
-
-    matriz_curso = (
-        df_filtered.groupby(["CO_CURSO", "CURSO", "CENTRO"])
-        .apply(
-            lambda x: pd.Series({
-                "TOTAL_ALUNOS": x["TOTAL_ALUNOS"].sum(),
-                "TOTAL_COTISTAS": x.loc[x["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum(),
-                "TOTAL_COM_APOIO": x.loc[x["RECEBE_AUXILIO"] == 1, "TOTAL_ALUNOS"].sum(),
-                "TOTAL_IDPNA": x["TOTAL_IDPNA"].sum(),
-            }),
-            include_groups=False,
+    with col_chart2:
+        st.markdown("**Matriz de Alocação: Cobertura vs. Vulnerabilidade**")
+        matriz_curso = (
+            df_filtered.groupby(["CURSO", "CENTRO"])
+            .apply(
+                lambda x: pd.Series({
+                    "TOTAL_COTISTAS": x.loc[x["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum(),
+                    "TOTAL_COM_APOIO": x.loc[x["RECEBE_AUXILIO"] == 1, "TOTAL_ALUNOS"].sum(),
+                    "TOTAL_IDPNA": x["TOTAL_IDPNA"].sum(),
+                }),
+                include_groups=False,
+            )
+            .reset_index()
         )
-        .reset_index()
-    )
-    matriz_curso["TAXA_DESASSISTIDO"] = np.where(
-        matriz_curso["TOTAL_COTISTAS"] > 0,
-        (matriz_curso["TOTAL_IDPNA"] / matriz_curso["TOTAL_COTISTAS"] * 100).round(2),
-        0,
-    )
+        matriz_curso = matriz_curso[matriz_curso["TOTAL_COTISTAS"] > 0]
 
-    fig_scatter = px.scatter(
-        matriz_curso,
-        x="TOTAL_COTISTAS",
-        y="TOTAL_COM_APOIO",
-        size="TOTAL_ALUNOS",
-        color="TAXA_DESASSISTIDO",
-        hover_name="CURSO",
-        hover_data=["CENTRO", "TOTAL_IDPNA"],
-        color_continuous_scale="Reds",
-        labels={
-            "TOTAL_COTISTAS": "Total de Cotistas",
-            "TOTAL_COM_APOIO": "Cotistas com Auxílio",
-            "TAXA_DESASSISTIDO": "% Desassistidos (IDR_C)",
+        fig_scatter = px.scatter(
+            matriz_curso,
+            x="TOTAL_COTISTAS",
+            y="TOTAL_COM_APOIO",
+            size="TOTAL_IDPNA",
+            color_discrete_sequence=["#1e3a8a"],
+            hover_name="CURSO",
+            hover_data=["CENTRO", "TOTAL_IDPNA"],
+            labels={"TOTAL_COTISTAS": "Total de Cotistas", "TOTAL_COM_APOIO": "Cotistas Assistidos"},
+        )
+        # Linha Ideal de Atendimento 1:1
+        max_v = max(matriz_curso["TOTAL_COTISTAS"].max(), 10)
+        fig_scatter.add_trace(
+            go.Scatter(
+                x=[0, max_v],
+                y=[0, max_v],
+                mode="lines",
+                name="Meta 100% Atendimento",
+                line=dict(dash="dot", color="#94a3b8"),
+            )
+        )
+        fig_scatter.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            margin=dict(l=0, r=0, t=10, b=0),
+            showlegend=False,
+            xaxis=dict(showgrid=True, gridcolor="#f1f5f9"),
+            yaxis=dict(showgrid=True, gridcolor="#f1f5f9"),
+            height=380,
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("#### 📋 Tabela Tática para Gestão de Edital")
+    
+    # Tabela limpa e formatada
+    df_table = matriz_curso.sort_values("TOTAL_IDPNA", ascending=False).copy()
+    df_table["Taxa Desassistência (%)"] = ((df_table["TOTAL_IDPNA"] / df_table["TOTAL_COTISTAS"]) * 100).round(1)
+    df_table.columns = ["Curso", "Centro", "Nº Cotistas", "Nº Atendidos", "Nº IDPNA (Fila)", "Taxa Desassistência (%)"]
+    
+    st.dataframe(
+        df_table,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Taxa Desassistência (%)": st.column_config.ProgressColumn(
+                "Taxa Desassistência (%)",
+                format="%.1f%%",
+                min_value=0,
+                max_value=100,
+            ),
         },
     )
-    # Linha de Cobertura Ideal (y = x)
-    max_val = max(matriz_curso["TOTAL_COTISTAS"].max(), matriz_curso["TOTAL_COM_APOIO"].max())
-    fig_scatter.add_trace(
-        go.Scatter(
-            x=[0, max_val],
-            y=[0, max_val],
-            mode="lines",
-            name="Linha de Referência 1:1",
-            line=dict(dash="dash", color="gray"),
-        )
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# TAB 2: Desigualdade por Turno (Pergunta 2)
+# TAB 2: ANÁLISE POR TURNO
 # -----------------------------------------------------------------------------
-with tab2:
-    st.markdown("### Taxa de Cotistas Desassistidos — Diurno vs. Noturno")
+with tab_turno:
+    st.markdown("### Disparidade entre Cursos Diurnos e Noturnos")
+    st.caption("Avaliação se os cursos do período noturno possuem barreira no acesso aos programas permanentes de assistência.")
 
-    df_cot_turno = df_filtered[(df_filtered["IN_RESERVA_VAGAS"] == 1) & (df_filtered["GRUPO_TURNO"].isin(["Diurno", "Noturno"]))]
+    df_cot_turno = df_filtered[
+        (df_filtered["IN_RESERVA_VAGAS"] == 1) & (df_filtered["GRUPO_TURNO"].isin(["Diurno", "Noturno"]))
+    ]
 
     resumo_turno = (
         df_cot_turno.groupby("GRUPO_TURNO")
@@ -253,130 +376,120 @@ with tab2:
         )
         .reset_index()
     )
-    resumo_turno["PCT_DESASSISTIDOS"] = (resumo_turno["DESASSISTIDOS"] / resumo_turno["TOTAL_COTISTAS"] * 100).round(2)
+    resumo_turno["PCT_DESASSISTIDOS"] = (resumo_turno["DESASSISTIDOS"] / resumo_turno["TOTAL_COTISTAS"] * 100).round(1)
 
-    col_t1, col_t2 = st.columns([1, 1])
+    c_t1, c_t2 = st.columns([1, 1.2])
 
-    with col_t1:
+    with c_t1:
+        st.markdown("**Proporção de Cotistas Não Atendidos por Turno**")
         fig_turno = px.bar(
             resumo_turno,
             x="GRUPO_TURNO",
             y="PCT_DESASSISTIDOS",
-            color="GRUPO_TURNO",
             text="PCT_DESASSISTIDOS",
-            color_discrete_map={"Diurno": "#2b5c8f", "Noturno": "#e6550d"},
-            labels={"GRUPO_TURNO": "Turno", "PCT_DESASSISTIDOS": "% Desassistidos (IDPNA)"},
+            color="GRUPO_TURNO",
+            color_discrete_map={"Diurno": "#64748b", "Noturno": "#dc2626"},
         )
         fig_turno.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-        fig_turno.update_layout(showlegend=False, yaxis_range=[0, 100])
+        fig_turno.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            showlegend=False,
+            yaxis=dict(range=[0, 100], showgrid=False, title=""),
+            xaxis=dict(title="", showgrid=False),
+            height=320,
+        )
         st.plotly_chart(fig_turno, use_container_width=True)
 
-    with col_t2:
-        st.markdown("#### Teste de Hipótese (Qui-Quadrado)")
+    with c_t2:
+        st.markdown("**Validação Estatística (Teste Qui-Quadrado)**")
+        st.markdown(
+            """
+            O teste do **Qui-Quadrado ($\chi^2$)** verifica se a diferença de atendimento entre diurno e noturno é pontual ou um **padrão estrutural da instituição**.
+            """
+        )
         if len(resumo_turno) == 2 and resumo_turno["TOTAL_COTISTAS"].sum() > 0:
             obs = resumo_turno[["ASSISTIDOS", "DESASSISTIDOS"]].values
             chi2, p_val, gl, _ = chi2_contingency(obs)
 
-            st.write(f"**Estatística Qui-Quadrado ($\chi^2$):** {chi2:.4f}")
-            st.write(f"**Graus de Liberdade:** {gl}")
-            st.write(f"**p-valor:** {p_val:.6f}")
-
+            st.markdown(
+                f"""
+                <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid #1e3a8a;">
+                    <b>Estatística Qui-Quadrado:</b> {chi2:.2f}<br>
+                    <b>p-valor:</b> {p_val:.4e}<br>
+                    <b>Graus de Liberdade:</b> {gl}
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+            st.markdown("<br>", unsafe_allow_html=True)
             if p_val < 0.05:
-                st.success("✅ **Resultado Significativo (p < 0,05):** Existe associação estatisticamente significativa entre o turno do curso e a taxa de desassistência de estudantes cotistas.")
+                st.error("结论: **Diferença Estatisticamente Significativa (p < 0,05).** Os estudantes do turno noturno possuem menor taxa proporcional de cobertura de auxílios.")
             else:
-                st.warning("⚠️ **Resultado Não Significativo (p >= 0,05):** Não foram encontradas evidências estatísticas de diferença entre os turnos no recorte selecionado.")
-        else:
-            st.info("Filtro atual insuficiente para rodar o teste Qui-Quadrado de Independência.")
+                st.info("结论: **Não há diferença estatística significativa** na taxa de atendimento entre os turnos no recorte selecionado.")
 
 # -----------------------------------------------------------------------------
-# TAB 3: Equidade e Perfil Demográfico (Pergunta 4)
+# TAB 3: EQUIDADE E PERFIL DEMOGRÁFICO
 # -----------------------------------------------------------------------------
-with tab3:
-    st.markdown("### Comparativo Demográfico: Corpo Discente Total vs. Beneficiários")
+with tab_equidade:
+    st.markdown("### Representatividade dos Beneficiários da PRAPE")
+    st.caption("Comparativo entre a composição do corpo discente total da UFPB e a população efetivamente atendida pelos auxílios.")
 
-    col_d1, col_d2 = st.columns(2)
+    def calc_equidade(df, col_demo):
+        tot = df.groupby(col_demo)["TOTAL_ALUNOS"].sum()
+        ast = df[df["RECEBE_AUXILIO"] == 1].groupby(col_demo)["TOTAL_ALUNOS"].sum()
+        df_c = pd.concat([tot, ast], axis=1, keys=["Total Campus", "Assistidos"]).fillna(0)
+        df_c["% no Campus"] = (df_c["Total Campus"] / df_c["Total Campus"].sum() * 100).round(1)
+        df_c["% nos Assistidos"] = (df_c["Assistidos"] / df_c["Assistidos"].sum() * 100).round(1)
+        df_c["Diferença (p.p.)"] = (df_c["% nos Assistidos"] - df_c["% no Campus"]).round(1)
+        return df_c.reset_index()
 
-    def gerar_comp_demo(df, coluna):
-        total = df.groupby(coluna)["TOTAL_ALUNOS"].sum()
-        assistidos = df[df["RECEBE_AUXILIO"] == 1].groupby(coluna)["TOTAL_ALUNOS"].sum()
-        comp = pd.concat([total, assistidos], axis=1, keys=["Total Campus", "Assistidos"]).fillna(0)
-        comp["% Total"] = (comp["Total Campus"] / comp["Total Campus"].sum() * 100).round(2)
-        comp["% Assistidos"] = (comp["Assistidos"] / comp["Assistidos"].sum() * 100).round(2)
-        comp["Diferença (p.p.)"] = (comp["% Assistidos"] - comp["% Total"]).round(2)
-        return comp.reset_index()
+    ce1, ce2 = st.columns(2)
 
-    with col_d1:
-        st.markdown("#### Perfil por Raça/Cor")
-        df_raca_comp = gerar_comp_demo(df_filtered, "RACA_DESCRICAO")
-        df_raca_melt = df_raca_comp.melt(
-            id_vars="RACA_DESCRICAO",
-            value_vars=["% Total", "% Assistidos"],
-            var_name="Grupo",
-            value_name="Percentual",
-        )
+    with ce1:
+        st.markdown("**Perfil Raça/Cor**")
+        df_raca = calc_equidade(df_filtered, "RACA_DESCRICAO")
+
         fig_raca = px.bar(
-            df_raca_melt,
+            df_raca,
             x="RACA_DESCRICAO",
-            y="Percentual",
-            color="Grupo",
-            barmode="group",
-            color_discrete_sequence=["#9ecae1", "#de2d26"],
+            y="Diferença (p.p.)",
+            text="Diferença (p.p.)",
+            color="Diferença (p.p.)",
+            color_continuous_scale=["#dc2626", "#e2e8f0", "#1e3a8a"],
         )
-        fig_raca.update_layout(xaxis_title="", yaxis_title="% do Grupo")
+        fig_raca.update_traces(texttemplate="%{text:+.1f} p.p.", textposition="outside")
+        fig_raca.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            coloraxis_showscale=False,
+            yaxis=dict(title="Diferença de Proporção (p.p.)", showgrid=True, gridcolor="#f1f5f9"),
+            xaxis=dict(title=""),
+            height=300,
+        )
         st.plotly_chart(fig_raca, use_container_width=True)
-        st.dataframe(df_raca_comp[["RACA_DESCRICAO", "% Total", "% Assistidos", "Diferença (p.p.)"]], hide_index=True)
+        st.caption(" *Valores positivos indicam sobre-representação entre os bolsistas em relação ao campus.*")
 
-    with col_d2:
-        st.markdown("#### Perfil por Sexo")
-        df_sexo_comp = gerar_comp_demo(df_filtered, "SEXO_DESCRICAO")
-        df_sexo_melt = df_sexo_comp.melt(
-            id_vars="SEXO_DESCRICAO",
-            value_vars=["% Total", "% Assistidos"],
-            var_name="Grupo",
-            value_name="Percentual",
-        )
+    with ce2:
+        st.markdown("**Perfil Sexo**")
+        df_sexo = calc_equidade(df_filtered, "SEXO_DESCRICAO")
+
         fig_sexo = px.bar(
-            df_sexo_melt,
+            df_sexo,
             x="SEXO_DESCRICAO",
-            y="Percentual",
-            color="Grupo",
-            barmode="group",
-            color_discrete_sequence=["#9ecae1", "#de2d26"],
+            y="Diferença (p.p.)",
+            text="Diferença (p.p.)",
+            color="Diferença (p.p.)",
+            color_continuous_scale=["#dc2626", "#e2e8f0", "#1e3a8a"],
         )
-        fig_sexo.update_layout(xaxis_title="", yaxis_title="% do Grupo")
+        fig_sexo.update_traces(texttemplate="%{text:+.1f} p.p.", textposition="outside")
+        fig_sexo.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            coloraxis_showscale=False,
+            yaxis=dict(title="Diferença de Proporção (p.p.)", showgrid=True, gridcolor="#f1f5f9"),
+            xaxis=dict(title=""),
+            height=300,
+        )
         st.plotly_chart(fig_sexo, use_container_width=True)
-        st.dataframe(df_sexo_comp[["SEXO_DESCRICAO", "% Total", "% Assistidos", "Diferença (p.p.)"]], hide_index=True)
-
-# -----------------------------------------------------------------------------
-# TAB 4: Visão por Centro de Ensino (Mapa de Calor)
-# -----------------------------------------------------------------------------
-with tab4:
-    st.markdown("### Mapa de Calor da Demanda Reprimida (IDR_C) por Centro e Turno")
-
-    heat = (
-        df_filtered.groupby(["CENTRO", "GRUPO_TURNO"])
-        .apply(
-            lambda x: pd.Series({
-                "TOTAL_COTISTAS": x.loc[x["IN_RESERVA_VAGAS"] == 1, "TOTAL_ALUNOS"].sum(),
-                "TOTAL_IDPNA": x["TOTAL_IDPNA"].sum(),
-            }),
-            include_groups=False,
-        )
-        .reset_index()
-    )
-    heat["IDR_C"] = np.where(
-        heat["TOTAL_COTISTAS"] > 0,
-        (heat["TOTAL_IDPNA"] / heat["TOTAL_COTISTAS"] * 100).round(2),
-        np.nan,
-    )
-
-    heat_pivot = heat.pivot(index="CENTRO", columns="GRUPO_TURNO", values="IDR_C")
-
-    fig_heat = px.imshow(
-        heat_pivot,
-        text_auto=".1f",
-        aspect="auto",
-        color_continuous_scale="Reds",
-        labels=dict(x="Turno", y="Centro", color="% IDR_C"),
-    )
-    st.plotly_chart(fig_heat, use_container_width=True)
+        st.caption(" *Valores positivos indicam sobre-representação entre os bolsistas em relação ao campus.*")
